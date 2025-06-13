@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="view_event_form_inherit_sport_center" model="ir.ui.view">
+        <field name="name">event.form.inherit.sport.center</field>
+        <field name="model">event.event</field>
+        <field name="inherit_id" ref="event.view_event_form"/>
+        <field name="priority" eval="20"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='tag_ids']" position="after">       
+                <field name="sport_id"/>
+                <field name="center_id" domain="[('is_sport', '=', True)]"/>
+                <field name="ground_id" options="{'no_create_edit': True, 'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <menuitem id="sport_event_menu" name="Events" action="event.action_event_view" sequence="40" parent="bi_sport_center_management.student_sport_menu"/>
+</odoo>

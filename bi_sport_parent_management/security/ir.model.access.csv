@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_parent_id_print_wizard,access_parent_id_print_wizard,model_parent_id_print_wizard,,1,1,1,1
+access_partner_tag,access_partner_tag,model_partner_tag,,1,1,1,1
+

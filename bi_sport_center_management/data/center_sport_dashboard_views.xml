@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data noupdate="1">
+        <record id="center_sport_dashboard_action" model="ir.actions.client">
+            <field name="name">Sports Management center</field>
+            <field name="tag">coworking_space_dashboard_tag</field>
+        </record>
+
+        <menuitem id="menu_sport_dashboard" name="Dashboard" action="center_sport_dashboard_action" parent="bi_sport_center_management.student_admission_main_menu" sequence="-1"/>
+    </data>
+</odoo>

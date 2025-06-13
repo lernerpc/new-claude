@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="registration_inherit" name="Student - Registration Inherit" inherit_id="bi_sport_center_management.registration">
+        <xpath expr="//div[hasclass('col-12')][.//input[@name='affiliation']]" position="replace">
+            <div class="col-12">
+                <label for="pricelist_id" class="form-label">الانتماء</label>
+                <div class="o_website_form_field_container">
+                    <t t-foreach="pricelists" t-as="pricelist">
+                        <div class="form-check form-check-inline">
+                            <input type="radio" class="form-check-input" 
+                                   t-att-id="'pricelist_' + str(pricelist.id)" 
+                                   name="pricelist_id" 
+                                   t-att-value="pricelist.id" 
+                                   t-att-checked="pricelist_id == pricelist.id" 
+                                   required="1"/>
+                            <label class="form-check-label" t-att-for="'pricelist_' + str(pricelist.id)">
+                                <t t-esc="pricelist.name"/>
+                            </label>
+                        </div>
+                    </t>
+                    <input type="hidden" name="pricelist_id" t-att-value="pricelists[0].id if pricelists else ''" t-if="not pricelist_id and pricelists"/>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>

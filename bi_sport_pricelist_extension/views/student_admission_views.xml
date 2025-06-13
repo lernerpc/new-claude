@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="student_admission_view_form_inherit" model="ir.ui.view">
+        <field name="name">student.admission.view.form.inherit</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='activity_ids']/.." position="inside">
+                <field name="pricelist_id" required="1" string=" جهة الانتماء"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

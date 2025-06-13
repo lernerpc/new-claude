@@ -1,0 +1,143 @@
+from odoo import models, api, fields
+from odoo.exceptions import ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
+
+class StudentAdmission(models.Model):
+    _inherit = 'student.admission'
+
+    sport_id = fields.Many2one(
+        'product.product', string="Sport Name", required=True,
+        domain=[('is_sportname', '=', True)],
+        help="Select a sport product for this admission")
+
+    def action_make_invoice(self):
+        self.ensure_one()
+        _logger.info(f"Starting invoice creation for admission {self.name}")
+        
+        # Detailed logging of sport field
+        _logger.info("=== Sport Field Debug Information ===")
+        _logger.info(f"Direct sport_id access: {self.sport_id}")
+        _logger.info(f"Sport field type: {type(self.sport_id)}")
+        _logger.info(f"Sport field raw value: {self.read(['sport_id'])}")
+        _logger.info(f"Sport field browse: {self.env['product.product'].browse(self.sport_id.id) if self.sport_id else 'No sport'}")
+        _logger.info(f"Sport field exists: {self.sport_id.exists() if self.sport_id else False}")
+        _logger.info("===================================")
+
+        try:
+            # Get all fees without date restriction
+            fees = self.env['sport.membership.fees'].search([], order='sequence_id asc')
+            _logger.info(f"Found {len(fees)} fees: {fees.mapped('name')}")
+            
+            if not fees:
+                _logger.info("No fees found, using original invoice creation")
+                return super(StudentAdmission, self).action_make_invoice()
+
+            # Check if sport is assigned
+            sport = self.sport_id or getattr(self, 'activity_id', False)
+            if not sport:
+                _logger.error(f"No sport assigned to admission {self.name}")
+                # Try to get sport from inquiry if available
+                if self.inquiry_id and self.inquiry_id.sport_id:
+                    _logger.info(f"Found sport in inquiry: {self.inquiry_id.sport_id}")
+                    self.sport_id = self.inquiry_id.sport_id[0].id
+                    _logger.info(f"Updated sport_id to: {self.sport_id}")
+                else:
+                    raise ValidationError("Student has no sport assigned. Please select a sport before creating an invoice.")
+
+            # Verify the sport product is marked as a sport product
+            sport_product = self.env['product.product'].browse(sport.id)
+            if not sport_product.exists():
+                _logger.error(f"Sport product {sport.id} does not exist")
+                raise ValidationError("The selected sport product no longer exists. Please select a valid sport.")
+            
+            if not sport_product.is_sportname:
+                _logger.error(f"Selected product {sport_product.name} is not marked as a sport product")
+                raise ValidationError(f"Selected product {sport_product.name} is not marked as a sport product. Please select a valid sport.")
+
+            _logger.info(f"Using sport product: {sport_product.name} (ID: {sport_product.id})")
+
+            invoices = []
+
+            for fee in fees:
+                _logger.info(f"Fee order: {fee.sequence_id} - {fee.name}")
+                _logger.info(f"Processing fee: {fee.name} with products: {fee.product_ids.mapped('name')}")
+                
+                sale_journals = self.env['account.journal'].sudo().search([('type','=','sale')])
+                invoice_vals = {
+                    'invoice_origin': self.name or '',
+                    'move_type': 'out_invoice',
+                    'ref': f"{fee.sequence_id} - Created from Fees Membership Management - {fee.name}",
+                    'journal_id': sale_journals and sale_journals[0].id or False,
+                    'partner_id': self.parent_id.id if self.parent_id else self.student_id.id,
+                    'invoice_date': fields.Date.today(),
+                    'currency_id': self.student_id.currency_id.id or self.env.user.currency_id.id,
+                    'company_id': self.env.user.company_id.id or False,
+                }
+                invoice = self.env['account.move'].create(invoice_vals)
+                _logger.info(f"Created invoice {invoice.name} for fee {fee.name}")
+
+                # Add the sport product
+                invoice.write({'invoice_line_ids': [
+                    (0,0, {
+                        'product_id': sport_product.id,
+                        'name': f"{sport_product.name} - {fee.name}",
+                        'product_uom_id': sport_product.uom_id.id,
+                        'price_unit': sport_product.lst_price,
+                        'quantity': self.duration or 1,
+                        'move_name': self.name or '',
+                    })
+                ]})
+                _logger.info(f"Added sport product {sport_product.name} to invoice {invoice.name}")
+
+                # Add fee products
+                if fee.product_ids:
+                    for product in fee.product_ids:
+                        invoice.write({'invoice_line_ids': [
+                            (0,0, {
+                                'product_id': product.id,
+                                'name': f"{product.name} - {fee.name}",
+                                'product_uom_id': product.uom_id.id,
+                                'price_unit': product.lst_price,
+                                'quantity': 1,
+                                'move_name': self.name or '',
+                            })
+                        ]})
+                        _logger.info(f"Added fee product {product.name} to invoice {invoice.name}")
+                else:
+                    _logger.warning(f"No products found for fee {fee.name}")
+
+                invoices.append(invoice.id)
+
+            if invoices:
+                # Post all invoices
+                # self.env['account.move'].browse(invoices).action_post()
+                self.is_invoiced = True
+                _logger.info(f"Posted {len(invoices)} invoices: {invoices}")
+            else:
+                _logger.error("No invoices were created")
+                
+            return True
+
+        except Exception as e:
+            _logger.error(f"Error creating invoices: {str(e)}")
+            raise ValidationError(f"Error creating invoices: {str(e)}")
+
+class CreateInvoice(models.Model):
+    _inherit = 'create.invoice'
+
+    def action_create_invoice(self):
+        try:
+            admission_id = self.env['student.admission'].browse(self._context.get('active_id'))
+            if not admission_id:
+                raise ValidationError('Admission Registration not found!')
+            
+            _logger.info(f"Creating invoice for admission {admission_id.name}")
+            _logger.info(f"Admission sport_id value: {admission_id.sport_id}")
+            
+            # Call the admission's action_make_invoice method
+            return admission_id.action_make_invoice()
+        except Exception as e:
+            _logger.error(f"Error in create invoice wizard: {str(e)}")
+            raise ValidationError(f"Error creating invoice: {str(e)}")

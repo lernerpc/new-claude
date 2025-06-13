@@ -1,0 +1,1959 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+
+    <template id="registration_create_massage" name="Registration - Message">
+        <t t-call="website.layout">
+            <div id="wrap" dir="rtl">
+                <div class="oe_structure">
+                    <div class="container text-center mt-4">
+                        <t t-if="admission">
+                            <div class="alert alert-success" role="alert" style="border: 2px solid #28a745; border-radius: 0.5rem; padding: 1.5rem;">
+                                <h4 class="alert-heading">شكرًا لك!</h4>
+                                <p>
+                                    <t t-esc="massage"/>
+                                </p>
+                                <button type="button" id="print_registration" class="btn btn-primary mt-3" onclick="printRegistration()">طباعة النموذج</button>
+                            </div>
+
+                            <!-- Printable Registration Details -->
+                            <div id="printable_content" class="registration-details" style="display: block; margin-top: 30px; border: 2px solid #007bff; border-radius: 0.5rem; padding: 20px; background-color: #f8f9fa;">
+                                <!-- Header with receipt numbers -->
+                                <div class="print-header" style="position: relative; margin-bottom: 15px;">
+                                    <!-- Main header text with receipt numbers -->
+                                    <div class="header-print" style="margin-top: 10px; margin-bottom: 15px; position: relative;">
+                                        <!-- Receipt and form numbers at top right -->
+                                        <div class="receipt-numbers" style="position: absolute; top: -5px; right: 0; font-size: 12px; text-align: right; line-height: 1.6;">
+                                            <div style="margin-bottom: 8px; border: 1px solid #dee2e6; padding: 4px 8px; background-color: #f8f9fa; border-radius: 3px;">
+                                                <strong>رقم الإيصال:</strong> ................................
+                                            </div>
+                                            <div style="border: 1px solid #dee2e6; padding: 4px 8px; background-color: #f8f9fa; border-radius: 3px;">
+                                                <strong>رقم الاستمارة:</strong> ................................
+                                            </div>
+                                        </div>
+
+                                        <!-- Centered titles -->
+                                        <div class="text-center">
+                                            <h3 style="color: #007bff; margin-bottom: 5px; font-size: 18px;">كلية النصر للبنين - فيكتوريا الإسكندرية</h3>
+                                            <h4 style="color: #28a745; margin-bottom: 5px; font-size: 16px;">المركز الرياضى الصيفى/الشتوي المتخصص</h4>
+                                            <h5 style="color: #6c757d; margin-bottom: 10px; font-size: 14px;">استمارة تسجيل الاشتراك في نشاط المركز الرياضى</h5>
+                                        </div>
+                                        <hr style="border-top: 2px solid #007bff; margin: 10px 0;"/>
+                                    </div>
+                                </div>
+
+                                <div class="registration-info text-right">
+                                    <!-- Registration Information Section -->
+                                    <div class="section-header" style="background: linear-gradient(90deg, #007bff, #0056b3); color: white; padding: 6px 12px; margin: 8px 0 6px 0; border-radius: 5px;">
+                                        <h6 style="margin: 0; font-size: 14px;">
+                                            <strong>بيانات التسجيل</strong>
+                                        </h6>
+                                    </div>
+                                    <div class="row g-2 mb-4">
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>رقم التسجيل:</label>
+                                                <div class="field-value-compact">
+                                                    <span t-esc="admission.name"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>تاريخ التسجيل:</label>
+                                                <div class="field-value-compact">
+                                                    <span t-esc="admission.create_date.strftime('%Y-%m-%d')"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>جهة الانتماء:</label>
+                                                <div class="field-value-compact">
+                                                    <span t-esc="admission.pricelist_id.name if admission.pricelist_id else '--'"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Student Personal Information with Photo -->
+                                    <div class="section-header" style="background: linear-gradient(90deg, #28a745, #1e7e34); color: white; padding: 6px 12px; margin: 8px 0 6px 0; border-radius: 5px;">
+                                        <h6 style="margin: 0; font-size: 14px;">
+                                            <strong>البيانات الشخصية</strong>
+                                        </h6>
+                                    </div>
+                                    <div class="row g-2 mb-4">
+                                        <!-- Student Info -->
+                                        <div class="col-8">
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <div class="form-field-compact">
+                                                        <label>اسم الطالب:</label>
+                                                        <div class="field-value-compact">
+                                                            <span t-esc="admission.student_id.name"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-field-compact">
+                                                        <label>الرقم القومي:</label>
+                                                        <div class="field-value-compact">
+                                                            <span t-esc="admission.student_id.student_national_id"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-field-compact">
+                                                        <label>تاريخ الميلاد:</label>
+                                                        <div class="field-value-compact">
+                                                            <span t-esc="admission.student_id.birth_date"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-field-compact">
+                                                        <label>الجنس:</label>
+                                                        <div class="field-value-compact">
+                                                            <span t-esc="'ذكر' if admission.student_id.gender == 'male' else 'أنثى'"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-field-compact">
+                                                        <label>رقم هاتف الطالب:</label>
+                                                        <div class="field-value-compact">
+                                                            <span t-esc="admission.student_id.mobile or '--'"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <t t-if="admission.student_id.is_disability">
+                                                    <div class="col-6">
+                                                        <div class="form-field-compact">
+                                                            <label>أمراض:</label>
+                                                            <div class="field-value-compact" style="background-color: #f8d7da; color: #721c24;">نعم</div>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </div>
+                                        <!-- Student Photo - 4×6 Format -->
+                                        <div class="col-4">
+                                            <div class="student-photo-container" style="text-align: center;">
+                                                <label style="font-size: 13px; font-weight: bold; margin-bottom: 4px; display: block;">صورة الطالب (4×6)</label>
+                                                <div class="photo-frame" style="width: 60mm; height: 80mm; border: 2px solid #007bff; border-radius: 4px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 0 auto;">
+                                                    <t t-if="admission.student_photo">
+                                                        <img t-att-src="'data:image/png;base64,' + admission.student_photo.decode('utf-8')" style="width: 100%; height: 100%; object-fit: cover;" alt="Student Photo" class="student-image"/>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span style="font-size: 13px; color: #6c757d; text-align: center;">لا توجد صورة</span>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <br/>
+                                    <br/>
+
+                                    <!-- Parent Information -->
+                                    <div class="section-header" style="background: linear-gradient(90deg, #ffc107, #e0a800); color: #212529; padding: 6px 12px; margin: 8px 0 6px 0; border-radius: 5px;">
+                                        <h6 style="margin: 0; font-size: 14px;">
+                                            <strong>بيانات ولي الأمر</strong>
+                                        </h6>
+                                    </div>
+                                    <div class="row g-2 mb-4">
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>اسم ولي الأمر:</label>
+                                                <div class="field-value-compact">
+                                                    <span t-esc="admission.parent_id.name"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>الرقم القومي:</label>
+                                                <div class="field-value-compact">
+                                                    <span t-esc="admission.parent_id.parent_national_id"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>رقم الهاتف:</label>
+                                                <div class="field-value-compact">
+                                                    <span t-esc="admission.parent_id.mobile"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>مرافق:</label>
+                                                <div class="field-value-compact" style="background-color: #d4edda; color: #155724;">
+                                                    <span t-esc="'نعم' if admission.is_guardian else 'لا'"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="form-field-compact">
+                                                <label>موقف سيارة:</label>
+                                                <div class="field-value-compact" style="background-color: #d1ecf1; color: #0c5460;">
+                                                    <span t-esc="'نعم' if admission.is_parking else 'لا'"/>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <br/>
+                                    <br/>
+
+                                    <!-- Activities and Pricing Compact -->
+                                    <div class="section-header" style="background: linear-gradient(90deg, #17a2b8, #117a8b); color: white; padding: 6px 12px; margin: 8px 0 6px 0; border-radius: 5px;">
+                                        <h6 style="margin: 0; font-size: 14px;">
+                                            <strong>الأنشطة والأسعار</strong>
+                                        </h6>
+                                    </div>
+                                    <t t-if="admission.activity_ids">
+                                        <div class="row g-2 mb-4">
+                                            <div class="col-8">
+                                                <div class="activities-compact">
+                                                    <table class="table-compact" style="width: 100%; border: 2px solid #dee2e6; border-radius: 5px;">
+                                                        <thead>
+                                                            <tr style="background: linear-gradient(90deg, #e9ecef, #f8f9fa);">
+                                                                <th style="padding: 6px 10px; font-size: 13px; border: 1px solid #dee2e6; text-align: center;">النشاط</th>
+                                                                <th style="padding: 6px 10px; font-size: 13px; border: 1px solid #dee2e6; text-align: center;">السعر</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <t t-set="total_activities_price" t-value="0"/>
+                                                            <t t-foreach="admission.activity_ids" t-as="activity">
+                                                                <t t-set="activity_price" t-value="admission.pricelist_id._get_product_price(activity, 1) if admission.pricelist_id else activity.list_price"/>
+                                                                <t t-set="total_activities_price" t-value="total_activities_price + activity_price"/>
+                                                                <tr>
+                                                                    <td style="padding: 6px 10px; font-size: 12px; border: 1px solid #dee2e6;">
+                                                                        <span t-esc="activity.name"/>
+                                                                    </td>
+                                                                    <td style="padding: 6px 10px; font-size: 12px; border: 1px solid #dee2e6; text-align: center; background-color: #d4edda;">
+                                                                        <span t-esc="activity_price"/>
+ جنيه</td>
+                                                                </tr>
+                                                            </t>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="price-summary" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 8px; border-radius: 6px; height: 100%;">
+                                                    <div style="text-align: center; font-size: 13px;">
+                                                        <div style="margin-bottom: 6px; font-size: 13px;">
+                                                            <strong>ملخص التكلفة</strong>
+                                                        </div>
+                                                        <div style="font-size: 12px; margin-bottom: 4px;">الأنشطة:                                                            <span t-esc="total_activities_price"/>
+ جنيه</div>
+                                                        <div style="font-size: 12px; margin-bottom: 4px;">البطاقة: 50 جنيه</div>
+                                                        <div style="font-size: 12px; margin-bottom: 4px;">الاستمارة: 50 جنيه</div>
+
+                                                        <t t-if="admission.is_guardian">
+                                                            <div style="font-size: 12px; margin-bottom: 4px;">المرافق: 50 جنيه</div>
+                                                        </t>
+                                                        <hr style="margin: 6px 0; border-color: rgba(255,255,255,0.3);"/>
+                                                        <div style="font-size: 14px; font-weight: bold;">
+                                                        الإجمالي:                                                            <span t-esc="total_activities_price + 50 + 50 + (50 if admission.is_guardian else 0)"/>
+ جنيه
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
+                                    <br/>
+                                    <br/>
+
+                                    <!-- Special Needs Details (if applicable) -->
+                                    <t t-if="admission.student_id.is_disability and admission.student_id.disability_description">
+                                        <div class="section-header" style="background: linear-gradient(90deg, #dc3545, #c82333); color: white; padding: 3px 8px; margin: 5px 0 3px 0; border-radius: 3px;">
+                                            <h6 style="margin: 0; font-size: 12px;">
+                                                <strong>تفاصيل الأمراض</strong>
+                                            </h6>
+                                        </div>
+                                        <div class="row g-1 mb-2">
+                                            <div class="col-12">
+                                                <div class="field-value-compact" style="background-color: #f8d7da; color: #721c24; min-height: 35px; padding: 4px;">
+                                                    <span t-esc="admission.student_id.disability_description"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
+
+                                    <br/>
+                                    <br/>
+
+                                    <!-- Parent Declaration Compact -->
+                                    <div class="section-header mt-5" style="background: linear-gradient(90deg, #6f42c1, #5a32a3); color: white; padding: 3px 8px; margin: 5px 0 3px 0; border-radius: 3px;">
+                                        <h6 style="margin: 0; font-size: 12px;">
+                                            <strong>إقرار ولي الأمر</strong>
+                                        </h6>
+                                    </div>
+                                    <div class="declaration-compact" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+                                        <p style="font-size: 11px; line-height: 1.4; margin: 0;">
+                                        أقر أنا /                                            <strong>______________________________________</strong> ولي أمر الطالب، بالتعهد بالالتزام بالإجراءات الاحترازية 
+                                        والانصراف عقب الانتهاء من التدريب مباشرة، وأن ابني لا يعاني من أية مشكلات صحية.
+                                        </p>
+                                    </div>
+                                    <br/>
+
+                                    <!-- Signature Section Compact -->
+                                    <div class="signature-section-compact mt-2">
+                                        <div class="row g-1">
+                                            <div class="col-8 text-center">
+                                                <div style="font-size: 11px; margin-bottom: 3px;">
+                                                    <strong>توقيع ولي الأمر</strong>
+                                                </div>
+                                                <div style="border-bottom: 2px solid #000; height: 18px; margin: 4px 12px;"></div>
+                                            </div>
+                                            <div class="col-4 text-center">
+                                                <div style="font-size: 11px; margin-bottom: 3px;">
+                                                    <strong>التاريخ</strong>
+                                                </div>
+                                                <div style="border-bottom: 2px solid #000; height: 18px; margin: 4px 12px;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-warning" role="alert" style="border: 2px solid #ffc107; border-radius: 0.5rem; padding: 1.5rem;">
+                                <h4 class="alert-heading">عذرًا!</h4>
+                                <p>
+                                    <t t-esc="massage"/>
+                                الرجاء المحاولة مرة أخرى.</p>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+
+            <!-- A4 PDF-Optimized Print Styles -->
+            <style>
+            /* Screen styles for compact layout */
+            .form-field-compact {
+                margin-bottom: 6px;
+            }
+            .form-field-compact label {
+                font-weight: bold;
+                font-size: 14px;
+                margin-bottom: 3px;
+                color: #495057;
+                display: block;
+            }
+            .field-value-compact {
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                padding: 6px 8px;
+                background-color: #fff;
+                min-height: 28px;
+                display: flex;
+                align-items: center;
+                font-size: 12px;
+            }
+
+            /* 4×6 photo styles for screen */
+            .student-photo-container .photo-frame {
+                width: 60mm;
+                height: 80mm;
+                border: 2px solid #007bff;
+                border-radius: 4px;
+                background: #f8f9fa;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                margin: 0 auto;
+            }
+
+            .student-image {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 2px;
+            }
+
+            /* A4 Print Styles - 210mm x 297mm */
+            @media print {
+                @page {
+                    size: A4;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                body * {
+                    visibility: hidden;
+                }
+                
+                #printable_content, #printable_content * {
+                    visibility: visible;
+                }
+                
+                #printable_content {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 210mm;
+                    height: 297mm;
+                    padding: 8mm !important;
+                    margin: 0 !important;
+                    background: white !important;
+                    border: 3px solid #007bff !important;
+                    box-shadow: none !important;
+                    font-family: Arial, sans-serif !important;
+                    overflow: hidden;
+                    box-sizing: border-box;
+                }
+                
+                .btn, .alert {
+                    display: none !important;
+                }
+                
+                /* Header styling for print */
+                .print-header {
+                    margin-bottom: 12px !important;
+                }
+                
+                .receipt-numbers {
+                    top: -5px !important;
+                    right: 0 !important;
+                    font-size: 11px !important;
+                    font-weight: bold !important;
+                    text-align: right !important;
+                    line-height: 1.8 !important;
+                }
+                .receipt-numbers div {
+                    border: 1px solid #333 !important;
+                    padding: 3px 6px !important;
+                    background-color: #f8f9fa !important;
+                    border-radius: 2px !important;
+                    margin-bottom: 6px !important;
+                }
+                
+                .header-print {
+                    text-align: center;
+                    margin-top: 15px !important;
+                    margin-bottom: 12px !important;
+                    page-break-after: avoid;
+                }
+                .header-print h3 {
+                    font-size: 18px !important;
+                    margin: 0 0 4px 0 !important;
+                    color: #007bff !important;
+                    font-weight: bold !important;
+                }
+                .header-print h4 {
+                    font-size: 16px !important;
+                    margin: 0 0 4px 0 !important;
+                    color: #28a745 !important;
+                    font-weight: bold !important;
+                }
+                .header-print h5 {
+                    font-size: 14px !important;
+                    margin: 0 0 6px 0 !important;
+                    color: #6c757d !important;
+                }
+                .header-print hr {
+                    border-top: 2px solid #007bff !important;
+                    margin: 6px 0 !important;
+                }
+                
+                /* Section headers */
+                .section-header {
+                    padding: 5px 10px !important;
+                    margin: 6px 0 4px 0 !important;
+                    border-radius: 4px !important;
+                    page-break-after: avoid !important;
+                }
+                .section-header h6 {
+                    margin: 0 !important;
+                    font-size: 12px !important;
+                    font-weight: bold !important;
+                }
+                
+                /* Compact form fields */
+                .form-field-compact {
+                    margin-bottom: 4px !important;
+                }
+                .form-field-compact label {
+                    font-size: 11px !important;
+                    margin-bottom: 2px !important;
+                    font-weight: bold !important;
+                }
+                .field-value-compact {
+                    border: 1px solid #333 !important;
+                    padding: 3px 5px !important;
+                    min-height: 20px !important;
+                    font-size: 10px !important;
+                    background-color: white !important;
+                    border-radius: 2px !important;
+                }
+                
+                /* 4×6 Student photo for print */
+                .student-photo-container label {
+                    font-size: 10px !important;
+                }
+                .student-photo-container .photo-frame {
+                    width: 40mm !important;
+                    height: 60mm !important;
+                    border: 2px solid #333 !important;
+                    border-radius: 4px !important;
+                    background: white !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    overflow: hidden !important;
+                    margin: 0 auto !important;
+                }
+                .student-image {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                    border-radius: 2px !important;
+                }
+                
+                /* Grid adjustments */
+                .row {
+                    margin: 0 !important;
+                }
+                .col-2, .col-4, .col-6, .col-8, .col-10, .col-12 {
+                    padding: 0 4px !important;
+                }
+                
+                /* Activities table */
+                .table-compact {
+                    border-collapse: collapse !important;
+                    width: 100% !important;
+                    border: 2px solid #333 !important;
+                }
+                .table-compact th,
+                .table-compact td {
+                    border: 1px solid #333 !important;
+                    padding: 4px 6px !important;
+                    font-size: 10px !important;
+                }
+                .table-compact th {
+                    background-color: #f0f0f0 !important;
+                    font-weight: bold !important;
+                    font-size: 11px !important;
+                }
+                
+                /* Price summary */
+                .price-summary {
+                    padding: 6px !important;
+                    border-radius: 5px !important;
+                    background: #28a745 !important;
+                    color: white !important;
+                    height: auto !important;
+                }
+                .price-summary div {
+                    font-size: 10px !important;
+                    margin-bottom: 2px !important;
+                }
+                .price-summary div:first-child {
+                    font-size: 12px !important;
+                    font-weight: bold !important;
+                }
+                .price-summary div:last-child {
+                    font-size: 13px !important;
+                    font-weight: bold !important;
+                }
+                .price-summary hr {
+                    margin: 4px 0 !important;
+                    border-color: rgba(255,255,255,0.3) !important;
+                }
+                
+                /* Declaration section */
+                .declaration-compact {
+                    background-color: #f8f9fa !important;
+                    border: 2px solid #333 !important;
+                    padding: 8px !important;
+                    border-radius: 4px !important;
+                    margin-bottom: 8px !important;
+                }
+                .declaration-compact p {
+                    font-size: 10px !important;
+                    line-height: 1.4 !important;
+                    margin: 0 !important;
+                }
+                
+                /* Signature section */
+                .signature-section-compact {
+                    margin-top: 10px !important;
+                }
+                .signature-section-compact div[style*="font-size"] {
+                    font-size: 10px !important;
+                    margin-bottom: 3px !important;
+                    font-weight: bold !important;
+                }
+                .signature-section-compact div[style*="border-bottom"] {
+                    border-bottom: 2px solid #333 !important;
+                    height: 18px !important;
+                    margin: 4px 12px !important;
+                }
+                
+                /* Preserve colors in print */
+                * {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                
+                /* Background color preservation */
+                .section-header,
+                .price-summary, .field-value-compact[style*="background-color"],
+                .table-compact th {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                
+                /* Ensure page doesn't break awkwardly */
+                .registration-info {
+                    page-break-inside: avoid;
+                }
+                
+                /* Make sure everything fits on one page */
+                .section-header,
+                .row,
+                .declaration-compact,
+                .signature-section-compact {
+                    page-break-inside: avoid;
+                }
+            }
+            </style>
+
+            <!-- Enhanced Print JavaScript -->
+            <script>
+            function printRegistration() {
+                // Enable background graphics for better color printing
+                const css = '@media print { * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; } }';
+                const style = document.createElement('style');
+                style.type = 'text/css';
+                style.appendChild(document.createTextNode(css));
+                document.head.appendChild(style);
+                
+                // Trigger print dialog
+                window.print();
+                
+                // Clean up
+                document.head.removeChild(style);
+            }
+            </script>
+        </t>
+    </template>
+
+    <template id="registration" name="Student - Registration">
+        <t t-call="website.layout">
+            <div id="wrap" dir="rtl">
+                <style>
+            .form-label, .form-check-label {
+                font-weight: bold;
+                text-align: right;
+            }
+            .form-control, .form-select {
+                text-align: right;
+                border: 1px solid #ced4da;
+                border-radius: 0.25rem;
+            }
+            .form-control:focus, .form-select:focus {
+                border-color: #86b7fe;
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            }
+            select[multiple] {
+                min-height: 160px;
+                background-color: #fff;
+                cursor: pointer;
+                padding: 0.5rem;
+            }
+            .pull-left {
+                float: right !important;
+            }
+            hr {
+                margin: 1.5rem 0;
+                border-top: 1px solid rgba(0, 0, 0 , 0.1);
+            }
+            .btn-primary, .btn-secondary {
+                background-color: #007bff;
+                border-color: #007bff;
+                border-radius: 0.25rem;
+                margin-right: 10px;
+            }
+            .btn-primary:hover, .btn-secondary:hover {
+                background-color: #0056b3;
+                border-color: #004085;
+            }
+            .form-check-input {
+                margin-left: 0.25rem;
+                margin-right: 0;
+            }
+            #registration_create_form {
+                border: 2px solid #007bff;
+                border-radius: 0.5rem;
+                padding: 1.5rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                background-color: #fff;
+            }
+            .declaration-input {
+                border: 0;
+                border-bottom: 1px solid #ced4da;
+                border-radius: 0;
+                background-color: transparent;
+                width: 50%;
+                display: inline-block;
+                margin-right: 0.5rem;
+            }
+            .header-text {
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 0.5rem;
+            }
+            .error-message {
+                color: red;
+                font-size: 0.875rem;
+                margin-top: 0.25rem;
+                display: none;
+            }
+            
+            /* Price calculation styles */
+            .price-calculation {
+                background-color: #f8f9fa;
+                border: 2px solid #28a745;
+                border-radius: 0.5rem;
+                padding: 1rem;
+                margin: 1rem 0;
+            }
+            .price-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin: 0.5rem 0;
+                padding: 0.25rem 0;
+            }
+            .price-total {
+                font-size: 1.2rem;
+                font-weight: bold;
+                border-top: 2px solid #28a745;
+                padding-top: 0.5rem;
+                margin-top: 0.5rem;
+            }
+            .price-item {
+                color: #495057;
+            }
+            .price-value {
+                font-weight: bold;
+                color: #28a745;
+            }
+
+            /* Loader styles */
+            .loader-container {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 255, 255, 0.8);
+                z-index: 9999;
+                justify-content: center;
+                align-items: center;
+            }
+            .loader {
+                border: 5px solid #f3f3f3;
+                border-radius: 50%;
+                border-top: 5px solid #007bff;
+                width: 50px;
+                height: 50px;
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .btn:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+            /* Validation styles */
+            .form-control.is-invalid, .form-select.is-invalid, .form-check-input.is-invalid {
+                border-color: #dc3545;
+                box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+            }
+            .form-control.is-valid, .form-select.is-valid, .form-check-input.is-valid {
+                border-color: #28a745;
+                box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25);
+            }
+            
+            /* Checkbox and radio button validation styles */
+            .form-check-input.is-invalid + .form-check-label {
+                color: #dc3545;
+            }
+            .form-check-input.is-valid + .form-check-label {
+                color: #28a745;
+            }
+            
+            /* Submit button disabled state */
+            .btn:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
+            
+            /* Error message styling */
+            .error-message {
+                color: #dc3545;
+                font-size: 0.875rem;
+                margin-top: 0.25rem;
+                display: none;
+                font-weight: 500;
+            }
+            
+            /* Required field indicator */
+            .required-field::after {
+                content: " *";
+                color: #dc3545;
+                font-weight: bold;
+            }
+            
+            /* Progress indicator */
+            .form-progress {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 0.5rem;
+                padding: 1rem;
+                margin-bottom: 1rem;
+                text-align: center;
+            }
+            
+            .progress-bar {
+                background-color: #28a745;
+                height: 10px;
+                border-radius: 5px;
+                transition: width 0.3s ease;
+            }
+            
+            /* Validation feedback icons */
+            .form-control.is-valid {
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.4.37 4.4-4.37-.4-.38-4 3.98L.77 4.8l-.4.37 2.25 2.25z'/%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right calc(0.375em + 0.1875rem) center;
+                background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+            }
+            
+            .form-control.is-invalid {
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 1.4 1.4-1.4 1.4-1.4-1.4z'/%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right calc(0.375em + 0.1875rem) center;
+                background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+            }
+                </style>
+
+                <!-- Loader -->
+                <div id="loader" class="loader-container">
+                    <div class="loader"></div>
+                </div>
+
+                <script type="text/javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                // Price calculation variables
+                let selectedActivities = [];
+                let selectedPricelist = null;
+                let isGuardian = false;
+                const ID_CARD_FEE = 50;
+                const FORM_FEE = 50;
+                const GUARDIAN_FEE = 50;
+
+                // Validation functions
+                function validateNationalId(nationalId, fieldName, fieldElement) {
+                    const errorElement = document.getElementById(fieldElement.id + '_error');
+                    if (!nationalId) {
+                        showError(errorElement, fieldName + ' مطلوب', fieldElement);
+                        return false;
+                    }
+                    if (!nationalId.match(/^\d{14}$/)) {
+                        showError(errorElement, fieldName + ' يجب أن يكون 14 رقمًا', fieldElement);
+                        return false;
+                    }
+                    hideError(errorElement, fieldElement);
+                    return true;
+                }
+
+                function validateMobile(mobile, fieldName, fieldElement, required = true) {
+                    const errorElement = document.getElementById(fieldElement.id + '_error');
+                    if (!mobile &amp;&amp; required) {
+                        showError(errorElement, fieldName + ' مطلوب', fieldElement);
+                        return false;
+                    }
+                    if (mobile &amp;&amp; !mobile.match(/^0\d{10}$/)) {
+                        showError(errorElement, 'رقم الهاتف يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا', fieldElement);
+                        return false;
+                    }
+                    hideError(errorElement, fieldElement);
+                    return true;
+                }
+
+                function validateEmail(email, fieldElement) {
+                    const errorElement = document.getElementById(fieldElement.id + '_error');
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (email &amp;&amp; !emailRegex.test(email)) {
+                        showError(errorElement, 'البريد الإلكتروني غير صحيح', fieldElement);
+                        return false;
+                    }
+                    hideError(errorElement, fieldElement);
+                    return true;
+                }
+
+                function validateRequired(value, fieldName, fieldElement) {
+                    const errorElement = document.getElementById(fieldElement.id + '_error');
+                    if (!value || value.trim() === '') {
+                        showError(errorElement, fieldName + ' مطلوب', fieldElement);
+                        return false;
+                    }
+                    hideError(errorElement, fieldElement);
+                    return true;
+                }
+
+                function validateFileRequired(fileInput, fieldName) {
+                    const errorElement = document.getElementById(fileInput.id + '_error');
+                    if (!fileInput.files || fileInput.files.length === 0) {
+                        showError(errorElement, fieldName + ' مطلوبة', fileInput);
+                        return false;
+                    }
+                    hideError(errorElement, fileInput);
+                    return true;
+                }
+
+                function showError(errorElement, message, fieldElement) {
+                    if (errorElement &amp;&amp; fieldElement) {
+                        errorElement.textContent = message;
+                        errorElement.style.display = 'block';
+                        fieldElement.classList.add('is-invalid');
+                        fieldElement.classList.remove('is-valid');
+                    }
+                }
+
+                function hideError(errorElement, fieldElement) {
+                    if (errorElement &amp;&amp; fieldElement) {
+                        errorElement.style.display = 'none';
+                        fieldElement.classList.remove('is-invalid');
+                        fieldElement.classList.add('is-valid');
+                    }
+                }
+
+                // Initialize all fields as invalid (red) on page load
+                function initializeValidation() {
+                    const requiredFields = [
+                        'fname', 'lname', 'student_national_id', 'birth_date', 
+                        'gender', 'parent_fullname', 'parent_national_id', 
+                        'parent_mobile', 'student_photo'
+                    ];
+                    
+                    requiredFields.forEach(fieldId =&gt; {
+                        const field = document.getElementById(fieldId);
+                        if (field) {
+                            field.classList.add('is-invalid');
+                            const errorElement = document.getElementById(fieldId + '_error');
+                            if (errorElement) {
+                                if (fieldId === 'student_photo') {
+                                    errorElement.textContent = 'صورة الطالب مطلوبة';
+                                } else if (fieldId === 'birth_date') {
+                                    errorElement.textContent = 'تاريخ الميلاد مطلوب';
+                                } else if (fieldId === 'gender') {
+                                    errorElement.textContent = 'الجنس مطلوب';
+                                } else {
+                                    errorElement.textContent = 'هذا الحقل مطلوب';
+                                }
+                                errorElement.style.display = 'block';
+                            }
+                        }
+                    });
+                    
+                    // Mark optional fields
+                    const optionalFields = ['mobile', 'email'];
+                    optionalFields.forEach(fieldId =&gt; {
+                        const field = document.getElementById(fieldId);
+                        if (field) {
+                            field.classList.add('optional');
+                        }
+                    });
+                }
+
+                // Initialize validation on page load
+                initializeValidation();
+
+                // Real-time validation with input events
+                document.getElementById('fname').addEventListener('input', function() {
+                    validateRequired(this.value, 'الاسم الأول', this);
+                });
+
+                document.getElementById('lname').addEventListener('input', function() {
+                    validateRequired(this.value, 'اسم العائلة', this);
+                });
+
+                document.getElementById('student_national_id').addEventListener('input', function() {
+                    validateNationalId(this.value, 'الرقم القومي للطالب', this);
+                });
+
+                document.getElementById('parent_national_id').addEventListener('input', function() {
+                    validateNationalId(this.value, 'الرقم القومي لولي الأمر', this);
+                });
+
+                document.getElementById('mobile').addEventListener('input', function() {
+                    this.classList.add('optional'); // Mark as optional
+                    validateMobile(this.value, 'رقم هاتف الطالب', this, false);
+                });
+
+                document.getElementById('parent_mobile').addEventListener('input', function() {
+                    validateMobile(this.value, 'رقم هاتف ولي الأمر', this, true);
+                });
+
+                document.getElementById('parent_fullname').addEventListener('input', function() {
+                    validateRequired(this.value, 'اسم ولي الأمر', this);
+                });
+
+                document.getElementById('email').addEventListener('input', function() {
+                    this.classList.add('optional'); // Mark as optional
+                    if (this.value.trim() === '') {
+                        // Email is optional, so if empty, just remove validation classes
+                        this.classList.remove('is-invalid', 'is-valid');
+                        const errorElement = document.getElementById(this.id + '_error');
+                        if (errorElement) {
+                            errorElement.style.display = 'none';
+                        }
+                    } else {
+                        validateEmail(this.value, this);
+                    }
+                });
+
+                document.getElementById('birth_date').addEventListener('change', function() {
+                    validateRequired(this.value, 'تاريخ الميلاد', this);
+                });
+
+                document.getElementById('gender').addEventListener('change', function() {
+                    validateRequired(this.value, 'الجنس', this);
+                });
+
+                document.getElementById('student_photo').addEventListener('change', function() {
+                    validateFileRequired(this, 'صورة الطالب');
+                });
+
+                // Pricelist validation
+                const pricelistInputs = document.querySelectorAll('input[name="pricelist_id"]');
+                pricelistInputs.forEach(input =&gt; {
+                    input.addEventListener('change', function() {
+                        if (this.checked) {
+                            selectedPricelist = this.value;
+                            // Remove invalid state from all pricelist inputs
+                            pricelistInputs.forEach(inp =&gt; {
+                                inp.classList.remove('is-invalid');
+                                inp.classList.add('is-valid');
+                            });
+                            updatePriceCalculation();
+                        }
+                    });
+                });
+
+                // Activities validation
+                const activityCheckboxes = document.querySelectorAll('input[name="activity_ids[]"]');
+                activityCheckboxes.forEach(checkbox =&gt; {
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            selectedActivities.push({
+                                id: this.value,
+                                name: this.nextElementSibling.textContent.trim()
+                            });
+                        } else {
+                            selectedActivities = selectedActivities.filter(activity =&gt; activity.id !== this.value);
+                        }
+                        
+                        // Validate activities selection
+                        if (selectedActivities.length > 0) {
+                            activityCheckboxes.forEach(inp =&gt; {
+                                inp.classList.remove('is-invalid');
+                                inp.classList.add('is-valid');
+                            });
+                        } else {
+                            activityCheckboxes.forEach(inp =&gt; {
+                                inp.classList.add('is-invalid');
+                                inp.classList.remove('is-valid');
+                            });
+                        }
+                        
+                        updatePriceCalculation();
+                    });
+                });
+
+                // Initialize pricelist and activities as invalid
+                pricelistInputs.forEach(input =&gt; {
+                    input.classList.add('is-invalid');
+                });
+                
+                activityCheckboxes.forEach(checkbox =&gt; {
+                    checkbox.classList.add('is-invalid');
+                });
+
+                // Show/hide disability description based on checkbox
+                const disabilityCheckbox = document.getElementById('is_disability');
+                const disabilityDescription = document.getElementById('disability_description');
+                if (disabilityCheckbox) {
+                    disabilityCheckbox.addEventListener('change', function() {
+                        disabilityDescription.classList.toggle('d-none', !this.checked);
+                    });
+                }
+
+                // Guardian checkbox change handler
+                const guardianCheckbox = document.getElementById('is_guardian');
+                if (guardianCheckbox) {
+                    guardianCheckbox.addEventListener('change', function() {
+                        isGuardian = this.checked;
+                        updatePriceCalculation();
+                    });
+                }
+
+                // Price calculation function
+                async function updatePriceCalculation() {
+                    const priceContainer = document.getElementById('price-calculation-container');
+                    
+                    if (selectedActivities.length === 0 || !selectedPricelist) {
+                        priceContainer.style.display = 'none';
+                        return;
+                    }
+
+                    priceContainer.style.display = 'block';
+                    const priceDetails = document.getElementById('price-details');
+                    const totalElement = document.getElementById('total-price');
+                    
+                    let totalPrice = ID_CARD_FEE + FORM_FEE; // Base ID card fee
+                    let priceHTML = '';
+
+                    // Add ID card fee
+                    priceHTML += `
+                    <div class="price-row">
+                        <span class="price-item">رسوم البطاقة</span>
+                        <span class="price-value">${ID_CARD_FEE} جنيه</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-item">رسوم الاستمارة</span>
+                        <span class="price-value">${FORM_FEE} جنيه</span>
+                    </div>
+                    `;
+
+                    // Add guardian fee if selected
+                    if (isGuardian) {
+                        totalPrice += GUARDIAN_FEE;
+                        priceHTML += `
+                    <div class="price-row">
+                        <span class="price-item">رسوم المرافق</span>
+                        <span class="price-value">${GUARDIAN_FEE} جنيه</span>
+                    </div>
+                        `;
+                    }
+
+                    // Calculate activity prices
+                    for (const activity of selectedActivities) {
+                        try {
+                            const response = await fetch('/get_activity_price', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    jsonrpc: '2.0',
+                                    method: 'call',
+                                    params: {
+                                        activity_id: activity.id,
+                                        pricelist_id: selectedPricelist
+                                    }
+                                })
+                            });
+                            
+                            const data = await response.json();
+                            const activityPrice = data.result?.price || 0;
+                            totalPrice += activityPrice;
+                            
+                            priceHTML += `
+                    <div class="price-row">
+                        <span class="price-item">${activity.name}</span>
+                        <span class="price-value">${activityPrice} جنيه</span>
+                    </div>
+                            `;
+                        } catch (error) {
+                            console.error('Error fetching activity price:', error);
+                            priceHTML += `
+                    <div class="price-row">
+                        <span class="price-item">${activity.name}</span>
+                        <span class="price-value">-- جنيه</span>
+                    </div>
+                            `;
+                        }
+                    }
+
+                    priceDetails.innerHTML = priceHTML;
+                    totalElement.textContent = `${totalPrice} جنيه`;
+                }
+
+                // Function to calculate and update progress
+
+                // Function to check if form is valid
+                function isFormValid() {
+                    const invalidFields = document.querySelectorAll('.is-invalid:not(.optional)');
+                    const checkData = document.getElementById('check_data').checked;
+                    const hasActivities = selectedActivities.length &gt; 0;
+                    const hasPricelist = selectedPricelist !== null;
+                    
+                    return invalidFields.length === 0 &amp;&amp; checkData &amp;&amp; hasActivities &amp;&amp; hasPricelist;
+                }
+
+                // Update submit button state
+                function updateSubmitButton() {
+                    const submitButton = document.getElementById('submit_registration');
+                    if (isFormValid()) {
+                        submitButton.disabled = false;
+                        submitButton.classList.remove('btn-secondary');
+                        submitButton.classList.add('btn-primary');
+                        submitButton.textContent = 'تسجيل الآن';
+                    } else {
+                        submitButton.disabled = true;
+                        submitButton.classList.remove('btn-primary');
+                        submitButton.classList.add('btn-secondary');
+                        submitButton.textContent = 'يرجى إكمال البيانات المطلوبة';
+                    }
+                    
+                    // Update progress
+                }
+
+                // Agreement checkbox validation
+                const checkDataCheckbox = document.getElementById('check_data');
+                checkDataCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        this.classList.remove('is-invalid');
+                        this.classList.add('is-valid');
+                    } else {
+                        this.classList.add('is-invalid');
+                        this.classList.remove('is-valid');
+                    }
+                    updateSubmitButton();
+                });
+
+                // Initialize agreement checkbox as invalid
+                checkDataCheckbox.classList.add('is-invalid');
+
+                // Add event listeners to all form fields to update submit button
+                const allFormFields = document.querySelectorAll('input, select, textarea');
+                allFormFields.forEach(field =&gt; {
+                    ['input', 'change', 'blur'].forEach(eventType =&gt; {
+                        field.addEventListener(eventType, updateSubmitButton);
+                    });
+                });
+
+                // Initial submit button state
+                updateSubmitButton();
+
+                // Form validation and submission
+                const form = document.querySelector('#registration_create_form form');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        if (!isFormValid()) {
+                            e.preventDefault();
+                            alert('يرجى إكمال جميع البيانات المطلوبة وتصحيح الأخطاء');
+                            return false;
+                        }
+                        
+                        document.getElementById('loader').style.display = 'flex';
+                        return true;
+                    });
+                }
+            });
+                </script>
+
+                <div class="oe_structure">
+                    <div class="container mt-4" id="registration_create_form">
+                        <div class="header-text">
+                            <div>كلية النصر للبنين - فيكتوريا الإسكندرية</div>
+                            <div>المركز الرياضى الصيفى/الشتوي المتخصص</div>
+                            <div>استمارة تسجيل الاشتراك في نشاط المركز الرياضى</div>
+                        </div>
+                        <hr/>
+
+                        <h6>البيانات الشخصية</h6>
+
+                        <!-- Form Progress Indicator -->
+                        <!-- <div class="form-progress">
+                            <div class="mb-2">
+                                <span id="progress-text">مكتمل: 0%</span>
+                            </div>
+                            <div class="progress" style="height: 10px;">
+                                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div> -->
+
+                        <form class="row g-3" role="form" action="/registration/create" method="post" enctype="multipart/form-data">
+                            <div class="col-md-6">
+                                <label for="fname" class="form-label required-field">الاسم الأول</label>
+                                <input required="1" type="text" name="fname" class="form-control" id="fname" placeholder="أدخل الاسم الأول"/>
+                                <div id="fname_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="lname" class="form-label required-field">اسم العائلة</label>
+                                <input required="1" type="text" name="lname" class="form-control" id="lname" placeholder="أدخل اسم العائلة"/>
+                                <div id="lname_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="student_national_id" class="form-label required-field">الرقم القومي للطالب</label>
+                                <input required="1" type="text" name="student_national_id" class="form-control" id="student_national_id" placeholder="أدخل الرقم القومي"/>
+                                <div id="student_national_id_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="birth_date" class="form-label required-field">تاريخ الميلاد</label>
+                                <input required="1" type="date" name="birth_date" class="form-control" id="birth_date"/>
+                                <div id="birth_date_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="student_photo" class="form-label required-field">صورة الطالب (4×6)</label>
+                                <input required="1" type="file" name="student_photo" class="form-control" id="student_photo" accept="image/*"/>
+                                <small class="form-text text-muted">يرجى رفع صورة بمقاس 4×6 سم</small>
+                                <div id="student_photo_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="mobile" class="form-label">رقم هاتف الطالب</label>
+                                <input type="text" name="mobile" class="form-control" id="mobile" placeholder="أدخل رقم الهاتف"/>
+                                <div id="mobile_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="gender" class="form-label required-field">الجنس</label>
+                                <select required="1" name="gender" class="form-select" id="gender">
+                                    <option value="" label="اختر"/>
+                                    <option value="male">ذكر</option>
+                                    <option value="female">أنثى</option>
+                                </select>
+                                <div id="gender_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" name="email" class="form-control" id="email" placeholder="أدخل البريد الإلكتروني"/>
+                                <div id="email_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parent_fullname" class="form-label required-field">اسم ولي الأمر (كامل)</label>
+                                <input required="1" name="parent_fullname" type="text" class="form-control" id="parent_fullname" placeholder="أدخل اسم ولي الأمر"/>
+                                <div id="parent_fullname_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parent_national_id" class="form-label required-field">الرقم القومي لولي الأمر</label>
+                                <input required="1" name="parent_national_id" type="text" class="form-control" id="parent_national_id" placeholder="أدخل الرقم القومي"/>
+                                <div id="parent_national_id_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parent_mobile" class="form-label required-field">رقم هاتف ولي الأمر</label>
+                                <input required="1" type="text" name="parent_mobile" class="form-control" id="parent_mobile" placeholder="أدخل رقم الهاتف"/>
+                                <div id="parent_mobile_error" class="error-message"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input name="is_guardian" class="form-check-input" type="checkbox" id="is_guardian"/>
+                                    <label class="form-check-label" for="is_guardian">
+                               هل يوجد مرافق؟ (+50 جنيه)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input name="is_parking" class="form-check-input" type="checkbox" id="is_parking"/>
+                                    <label class="form-check-label" for="is_parking">
+                                هل يحتاج إلى موقف سيارة؟
+                                    </label>
+                                </div>
+                            </div>
+                            <hr/>
+                            <h6>الاحتياجات الخاصة</h6>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="is_disability" class="form-check-input is_disability" type="checkbox" id="is_disability"/>
+                                    <label class="form-check-label" for="is_disability">
+هل هناك أي أمراض؟                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <textarea placeholder="اكتب وصف الإعاقة إن وجدت..." name="disability_description" class="form-control d-none" id="disability_description"/>
+                            </div>
+                            <hr/>
+
+                            <h6>جهة الانتماء</h6>
+                            <div class="col-md-6">
+                                <t t-set="field_name" t-value="'pricelist_id'"/>
+                                <t t-foreach="pricelists" t-as="pricelist">
+                                    <div class="form-check">
+                                        <!-- Remove any checked attribute - all start unchecked -->
+                                        <input type="radio" t-att-id="'pricelist_' + str(pricelist.id)" t-att-name="field_name" t-att-value="pricelist.id" class="form-check-input" required="1"/>
+                                        <label t-att-for="'pricelist_' + str(pricelist.id)" class="form-check-label">
+                                            <t t-esc="pricelist.name"/>
+                                        </label>
+                                    </div>
+                                </t>
+                            </div>
+                            <hr/>
+
+                            <h6>تفاصيل الأنشطة</h6>
+                            <div id="activity-checkbox-group">
+                                <div class="row">
+                                    <t t-foreach="activities_by_category.items()" t-as="cat">
+                                        <div class="col-12 mb-3">
+                                            <strong>
+                                                <t t-esc="cat[0]"/>
+                                            </strong>
+                                            <div class="row">
+                                                <t t-foreach="cat[1]" t-as="activity">
+                                                    <div class="col-sm-6 col-md-3">
+                                                        <div class="form-check">
+                                                            <input type="checkbox" t-att-id="'activity_' + str(activity.id)" t-att-name="'activity_ids[]'" t-att-value="activity.id" class="form-check-input"/>
+                                                            <label class="form-check-label" t-att-for="'activity_' + str(activity.id)">
+                                                                <t t-esc="activity.display_name"/>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </t>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <!-- Price Calculation Section -->
+                            <div id="price-calculation-container" class="col-12 price-calculation" style="display: none;">
+                                <h5 class="text-center mb-3">حساب التكلفة الإجمالية</h5>
+                                <div id="price-details">
+                                    <!-- Price breakdown will be populated by JavaScript -->
+                                </div>
+                                <div class="price-row price-total">
+                                    <span class="price-item">المجموع الإجمالي:</span>
+                                    <span class="price-value" id="total-price">0 جنيه</span>
+                                </div>
+                            </div>
+
+                            <hr/>
+
+                            <div class="col-12">
+                                <div class="alert alert-warning" role="alert" style="border: 2px solid #ffc107; border-radius: 0.5rem; background-color: #fff3cd; color: #856404; box-shadow: 0 4px 6px rgba(255, 193, 7, 0.1); padding: 1.5rem;">
+                                    <h6 style="color: #856404; font-weight: bold; margin-bottom: 1rem;">
+           ⚠️ ملحوظة هامة جداً
+                                    </h6>
+                                    <div style="margin-bottom: 0.8rem; font-weight: 500; line-height: 1.6;">
+           🆔                                        <strong>لن يسمح بدخول أي مشترك أو ولي أمر من أبواب الكلية بدون الكارنيه الرسمي للكلية تحت أي ظرف.</strong>
+                                    </div>
+                                    <div style="font-weight: 500; line-height: 1.6;">
+           💰                                        <strong>في حالة وجود أكثر من طفل مشترك، اختر مرافق في تسجيل طفل واحد فقط حتى لا تدفع كارنيه مرافق أكثر من مرة.</strong>
+                                    </div>
+                                    <div style="margin-top: 0.8rem; font-weight: 500; line-height: 1.6;">
+           📷                                        <strong>يرجى رفع صورة شخصية بمقاس 4×6 سم بجودة عالية وخلفية بيضاء.</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="check_data" class="form-check-input" type="checkbox" id="check_data" required="1"/>
+                                    <label class="form-check-label" for="check_data">
+                                أوافق على شروط وأحكام التسجيل
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-4">
+                                <button type="submit" id="submit_registration" class="btn btn-primary pull-left">تسجيل الآن</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="oe_structure mt-2"/>
+            </div>
+        </t>
+    </template>
+
+    <!-- Rest of the templates remain the same -->
+    <template id="booking" name="Student - Ground Booking">
+        <t t-call="website.layout">
+            <div id="wrap">
+                <div class="oe_structure">
+                    <div class="container mt-4" id="booking_create_form">
+                        <h4 class="mx-4 text-center">Fill details &amp; Find slot</h4>
+                        <hr/>
+                        <form class="row g-3 mt-4" role="form" method="post" id="book_check_record" enctype="multipart/form-data">
+                            <div class="col-md-4">
+                                <label for="start_time" class="form-label">Start Time</label>
+                                <input id="datetimepicker_start_date" required="1" name="start_date" type="text" class="form-control" placeholder="yyyy-mm-dd hh:mm"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="end_time" class="form-label">End Time</label>
+                                <input id="datetimepicker_end_date" required="1" name="end_date" type="text" class="form-control" placeholder="yyyy-mm-dd hh:mm"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="ground" class="form-label">Select Ground</label>
+                                <select required="1" id="ground_id" name="ground_id" class="form-select">
+                                    <option value="" label="Select Ground">Select Ground</option>
+                                    <t t-foreach="grounds" t-as="ground">
+                                        <option t-esc="ground.name" t-att-value="ground.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="sport" class="form-label">Select Sport</label>
+                                <select required="1" id="sportname_id" name="sportname_id" class="form-select">
+                                    <option value="" label="Select Sport">Select Sport</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 mb-4">
+                                <button type="button" id="submit_booking_check" class="btn btn-outline-secondary btn-lg submit_booking_check">Check Availability</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="oe_structure mt-2"/>
+        </t>
+    </template>
+
+    <template id="booking" name="Student - Ground Booking">
+        <t t-call="website.layout">
+            <div id="wrap">
+                <div class="oe_structure">
+                    <div class="container mt-4" id="booking_create_form">
+                        <h4 class="mx-4 text-center">Fill details &amp; Find slot</h4>
+                        <hr/>
+                        <form class="row g-3 mt-4" role="form" method="post" id="book_check_record" enctype="multipart/form-data">
+                            <div class="col-md-4">
+                                <label for="start_time" class="form-label">Start Time</label>
+                                <input id="datetimepicker_start_date" required="1" name="start_date" type="text" class="form-control" placeholder="yyyy-mm-dd hh:mm"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="end_time" class="form-label">End Time</label>
+                                <input id="datetimepicker_end_date" required="1" name="end_date" type="text" class="form-control" placeholder="yyyy-mm-dd hh:mm"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="ground" class="form-label">Select Ground</label>
+                                <select required="1" id="ground_id" name="ground_id" class="form-select">
+                                    <option value="" label="Select Ground">Select Ground</option>
+                                    <t t-foreach="grounds" t-as="ground">
+                                        <option t-esc="ground.name" t-att-value="ground.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="sport" class="form-label">Select Sport</label>
+                                <select required="1" id="sportname_id" name="sportname_id" class="form-select">
+                                    <option value="" label="Select Sport">Select Sport</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 mb-4">
+                                <button type="button" id="submit_booking_check" class="btn btn-outline-secondary btn-lg submit_booking_check">Check Availability</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="oe_structure mt-2"/>
+        </t>
+        <div class="modal" id="check_validate_model" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Fill details for book slot!</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="popup_form_confirm_booking">
+                        <form role="form" action="/book_ground/confirm" method="post" enctype="multipart/form-data">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="start_time" class="form-label">Start Time</label>
+                                    <input required="1" type="text" name="model_start_date" class="form-control mb-2" id="model_start_date" placeholder="yyyy-mm-dd hh:mm" autocomplete = "off"/>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="end_time" class="form-label">End Time</label>
+                                    <input required="1" type="text" name="model_end_date" class="form-control mb-2" id="model_end_date" placeholder="yyyy-mm-dd'antique" autocomplete= "off"/>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="ground" class="form-label">Select Ground</label>
+                                    <select required="1" placeholder="Select Ground" id="model_ground_id" name="model_ground_id" class="form-select mb-2">
+                                        <option label="Select Ground"/>
+                                        <t t-foreach="grounds" t-as="ground">
+                                            <option t-esc="ground.name" t-att-value="ground.id"/>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="sport" class="form-label">Select Sport</label>
+                                    <select required="1" placeholder="Select Sport" id="model_sportname_id" name="model_sportname_id" class="form-select mb-2">
+                                        <option label="Select Sport"/>
+                                        <t t-foreach="sports" t-as="sport">
+                                            <option t-esc="sport.name" t-att-value="sport.id"/>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label for="model_user_name" class="form-label">User</label>
+                                    <input required="1" type="text" name="model_user_name" class="form-control mb-2" id="model_user_name"/>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label for="model_user_email" class="form-label">Email</label>
+                                    <input required="1" type="email" name="model_user_email" class="form-control mb-2" id="model_user_email"/>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label for="model_user_mobile" class="form-label">Mobile</label>
+                                    <input required="1" type="text" name="model_user_mobile" class="form-control mb-2" id="model_user_mobile"/>
+                                </div>
+                                <div class="col-md-12">
+                                    <input required="1" type="hidden" name="model_user_id" class="form-control mb-2" id="model_user_id"/>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-light" id="closeBtn" data-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary" id="confirmGroundBooking" data-dismiss="modal">Confirm Booking</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="inquiry" name="Student - Inquiry">
+        <t t-call="website.layout">
+            <div id="wrap">
+                <div class="oe_structure">
+                    <div class="container mt-4" id="inquiry_create">
+                        <h4 class="mx-4 text-center">Fill the below Details</h4>
+                        <hr/>
+                        <form class="row g-3 mt-4" role="form" action="/inquiry/create" method="post" enctype="multipart/form-data">
+                            <div class="col-md-6">
+                                <input required="1" placeholder="First Name" type="text" name="fname" class="form-control" id="fname"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" type="text" placeholder="Last Name" name="lname" class="form-control" id="lname"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" placeholder="Email" type="email" name="email" class="form-control" id="email"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" placeholder="Mobile" type="text" name="mobile" class="form-control" id="mobile"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" name="parent_fullname" type="text" class="form-control" id="parent_fullname" placeholder="Parents Name(Full)"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" name="parent_mobile" class="form-control" id="parent_mobile" placeholder="Parent Mobile"/>
+                            </div>
+                            <div class="col-md-4">
+                                <select required="1" placeholder="Sports Name" id="sport_id" name="sport_id" class="form-select">
+                                    <option label="Sports Name"/>
+                                    <t t-foreach="studies" t-as="level">
+                                        <option t-esc="level.display_name" t-att-value="level.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select required="1" id="level_id" name="level_id" class="form-select">
+                                    <option label="Sports Center"/>
+                                    <t t-foreach="centers" t-as="center">
+                                        <option t-esc="center.display_name" t-att-value="center.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" placeholder="Duration in Days" required="1" name="duration" class="form-control" id="duration"/>
+                            </div>
+                            <div class="col-md-12">
+                                <textarea placeholder="Write Your Query Here...." required="1" name="query" class="form-control" id="query"/>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="check_data" required="1" class="form-check-input" type="checkbox" id="check_data"/>
+                                    <label class="form-check-label" for="gridCheck">
+                                        Check me out
+                                    </label>
+                                </div>
+                            </div>
+                            <hr/>
+                            <div class="col-12 mb-4">
+                                <button type="submit" id="submit_inquiry" class="btn btn-primary pull-left">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="index_event" inherit_id="website_event.index">
+        <xpath expr='//t[@t-call="website.layout"]' position="replace">
+            <t t-call="website.layout">
+                <div id="wrap">
+                    <div class="oe_structure">
+                        <div t-if="not request.env.user._is_public()" id="wrap" class="o_wevent_index">
+                            <!-- Options -->
+                            <t t-set="opt_events_list_cards" t-value="is_view_active('website_event.opt_events_list_cards')"/>
+                            <t t-set="opt_events_list_columns" t-value="is_view_active('website_event.opt_events_list_columns')"/>
+                            <!-- Topbar -->
+                            <t t-call="website_event.index_topbar">
+                                <t t-set="search" t-value="original_search or search or searches['search']"/>
+                            </t>
+                            <!-- Drag/Drop Area -->
+                            <div id="oe_structure_we_index_1" class="oe_structure oe_empty"/>
+                            <!-- Content -->
+                            <div class="o_wevent_events_list">
+                                <div class="container">
+                                    <div class="d-flex mx-n3">
+                                        <t t-call="website_event.searched_tags"/>
+                                    </div>
+                                    <div class="row">
+                                        <div id="o_wevent_index_main_col" t-attf-class="col-md my-5 #{opt_events_list_columns and 'opt_events_list_columns' or 'opt_events_list_rows'}">
+                                            <div class="row">
+                                                <!-- Events List -->
+                                                <t t-call="website_event.events_list"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Drag/Drop Area -->
+                            <div id="oe_structure_we_index_2" class="oe_structure oe_empty"/>
+                        </div>
+                        <div t-if="request.env.user._is_public()" class="container mt-4" id="registration_create">
+                            <div class="alert alert-warning" role="alert">
+                                <h4 class="alert-heading">Not login!</h4>
+                                <p>
+                                    <t t-esc="massage"/>
+You need to login first!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_home_event" name="Show Events" customize_show="True" inherit_id="portal.portal_my_home">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Event Tickets</t>
+                <t t-set="url" t-value="'/my/events'"/>
+                <t t-set="placeholder_count" t-value="'event_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_home_menu_event" name="Portal layout : Event Tickets" inherit_id="portal.portal_breadcrumbs" priority="14">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'events' " t-attf-class="breadcrumb-item #{'active ' if not events else ''}">
+                <a t-if="event" t-attf-href="/my/events?{{ keep_query() }}">
+                    My Event Tickets
+                </a>
+                <t t-else="">
+                    My Event Tickets
+                </t>
+            </li>
+            <li t-if="event" class="breadcrumb-item active">
+                <span t-field="event.event_id.name"/>
+            </li>
+        </xpath>
+    </template>
+
+    <template id="portal_my_events" name="My Events">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Events</t>
+            </t>
+            <div t-if="not grouped_events" class="alert alert-warning mt8" role="alert">
+                There are no events.
+            </div>
+            <t t-if="grouped_events" t-call="portal.portal_table">
+                <t t-foreach="grouped_events" t-as="events">
+                    <thead>
+                        <tr>
+                            <th t-if="groupby == 'none'" width="600">Event Name</th>
+                            <t t-else="">
+                                <t t-if="groupby == 'event'">
+                                    <th>
+                                        <em class="font-weight-normal text-muted">Events:</em>
+                                        <span t-field="events[0].event_id.name"/>
+                                    </th>
+                                </t>
+                            </t>
+                            <th>Attendee</th>
+                            <th>Registration Date</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Download Ticket</th>
+                        </tr>
+                    </thead>
+                    <t t-foreach="events" t-as="event">
+                        <tr>
+                            <td>
+                                <a t-attf-href="/my/event/#{event.id}">
+                                    <span t-field="event.event_id.name"/>
+                                </a>
+                            </td>
+                            <td>
+                                <span t-field="event.name"/>
+                            </td>
+                            <td>
+                                <span t-field="event.create_date"/>
+                            </td>
+                            <td>
+                                <span t-field="event.phone"/>
+                            </td>
+                            <td>
+                                <span t-field="event.email"/>
+                            </td>
+                            <td>
+                                <a role="button" type="submit" t-attf-href="/event/ticket/report/#{event.id}" class="btn btn-secondary btn-block o_print_btn" title="print" target="_blank">
+                                    <i class="fa fa-print"/>
+ Download</a>
+                            </td>
+                        </tr>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="event_followup" name="Event Portal Template" inherit_id="portal.portal_sidebar" primary="True">
+        <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
+            <div class="row mt16 o_portal_sale_sidebar">
+                <!-- Sidebar -->
+
+                <t t-call="portal.portal_record_sidebar">
+                    <t t-set="classes" t-value="'col-lg-auto d-print-none'"/>
+
+                    <t t-set="entries">
+                        <ul class="list-group list-group-flush flex-wrap flex-row flex-lg-column">
+                            <li class="list-group-item d-grid align-content-start">
+                                <div class="o_download_pdf btn-toolbar flex-sm-nowrap">
+                                    <div class="btn-group flex-grow-1 me-1 mb-1">
+                                        <a class="btn btn-secondary o_download_btn" t-attf-href="/event/ticket/report/#{event.id}" title="Download">
+                                            <i class="fa fa-download"/>
+ Download Ticket</a>
+                                    </div>
+                                </div>
+                            </li>
+
+                            <li t-if="event.event_id.user_id" class="list-group-item flex-grow-1">
+                                <div class="small mb-1">
+                                    <strong class="text-muted">Salesperson</strong>
+                                </div>
+                                <div class="row flex-nowrap">
+                                    <div class="col flex-grow-0 pe-2">
+                                        <img class="rounded-circle mr4 float-start o_portal_contact_img" t-att-src="image_data_uri(event.event_id.user_id.avatar_1024)" alt="Contact"/>
+                                    </div>
+                                    <div class="col ps-0" style="min-width: 150px">
+                                        <span t-field="event.event_id.user_id" t-options='{"widget": "contact", "fields": ["name", "phone"], "no_marker": True}'/>
+                                        <a href="#discussion" class="small">
+                                            <i class="fa fa-comment"></i> Send message
+                                        </a>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </t>
+                </t>
+
+                <div id="quote_content" class="col-12 col-lg justify-content-end">
+                    <div class="card" id="portal_event_content">
+                        <div t-call="bi_sport_center_management.event_portal_content"/>
+                    </div>
+
+                    <div id="event_communication" class="mt-4">
+                        <h2>History</h2>
+                        <t t-call="portal.message_thread">
+                            <t t-set="object" t-value="event"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="event_portal_content" name="Event Portal Content">
+        <!-- Intro -->
+        <div id="introduction" class="row pb-2 pt-3 card-header bg-white">
+            <h2 class="col-md-8 my-0">
+                <em t-esc="event.state"/>
+            </h2>
+        </div>
+
+        <div class="card-body">
+            <!-- Informations -->
+            <div id="informations">
+                <div class="row" id="tr_date_contact">
+                    <div class="mb-3 col-6" t-if="event.event_id.user_id.partner_id">
+                        <strong>Contact:</strong>
+                        <span t-field="event.event_id.user_id.partner_id.name" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.street" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.city" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.state_id" />
+                        <span t-field="event.event_id.user_id.partner_id.zip" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.country_id" />
+                        <br/>
+                    </div>
+                    <div class="mb-3 col-6">
+                        <t t-if="event.create_date">
+                            <strong>Registration Date:</strong>
+                            <span t-field="event.create_date"/>
+                        </t>
+                    </div>
+                </div>
+                <div class="row" id="tr_date_event">
+                    <div class="mb-3 col-6" t-if="event.event_id.name">
+                        <strong>Event:</strong>
+                        <span t-field="event.event_id.name"/>
+                    </div>
+                    <div class="mb-3 col-6">
+                        <t t-if="event.create_date">
+                            <strong>Attendee Name:</strong>
+                            <span t-field="event.name"/>
+                        </t>
+                    </div>
+                </div>
+                <div class="row" id="tr_date_phone">
+                    <div class="mb-3 col-6">
+                        <t t-if="event.phone">
+                            <strong>Phone:</strong>
+                            <span t-field="event.phone"/>
+                        </t>
+                    </div>
+                    <div class="mb-3 col-6" t-if="event.email">
+                        <strong>Email:</strong>
+                        <span t-field="event.email"/>
+                    </div>
+                </div>
+                <div class="row" id="tr_date_attend">
+                    <div class="mb-3 col-6">
+                        <t t-if="event.date_closed">
+                            <strong>Attended Date:</strong>
+                            <span t-field="event.date_closed"/>
+                        </t>
+                    </div>
+                    <div class="mb-3 col-6">
+                        <t t-if="event.event_ticket_id">
+                            <strong>Event Ticket : </strong>
+                            <span t-field="event.event_ticket_id"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</odoo>

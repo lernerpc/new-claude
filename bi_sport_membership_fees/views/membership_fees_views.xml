@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_membership_fees_tree" model="ir.ui.view">
+        <field name="name">sport.membership.fees.tree</field>
+        <field name="model">sport.membership.fees</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence_id"/>
+                <field name="name"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="product_ids" widget="many2many_tags"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_membership_fees_form" model="ir.ui.view">
+        <field name="name">sport.membership.fees.form</field>
+        <field name="model">sport.membership.fees</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="sequence_id" readonly="1"/>
+                        <field name="name"/>
+                        <field name="start_date"/>
+                        <field name="end_date"/>
+                        <field name="product_ids" widget="many2many_tags" options="{'no_create': False}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_membership_fees" model="ir.actions.act_window">
+        <field name="name">First Month Extra Fees</field>
+        <field name="res_model">sport.membership.fees</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Define a new parent menu -->
+    <menuitem id="menu_membership_fees_root"
+              name="Membership Fees Management"
+              sequence="10"/>
+
+    <!-- Place the First Month Extra Fees menu under the new parent -->
+    <menuitem id="menu_membership_fees"
+              name="First Month Extra Fees"
+              parent="menu_membership_fees_root"
+              action="action_membership_fees"
+              sequence="10"/>
+</odoo>

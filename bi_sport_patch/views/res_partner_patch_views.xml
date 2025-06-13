@@ -1,0 +1,14 @@
+<odoo>
+  <data>
+    <record id="res_partner_form_patch_qr" model="ir.ui.view">
+      <field name="name">res.partner.form.qrcode</field>
+      <field name="model">res.partner</field>
+      <field name="inherit_id" ref="base.view_partner_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//field[@name='name']" position="after">
+          <field name="qr_code" widget="image" class="oe_avatar"/>
+        </xpath>
+      </field>
+    </record>
+  </data>
+</odoo>

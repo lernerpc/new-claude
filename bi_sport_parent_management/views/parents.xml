@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="action_partner_parent" model="ir.actions.act_window">
+        <field name="name">Parents</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_parent', '=', True)]</field>
+    </record>
+    <menuitem id="menu_partner_parent"
+              name="Parents"
+              action="action_partner_parent"
+              sequence="10"
+              groups="base.group_user"/>
+</odoo>

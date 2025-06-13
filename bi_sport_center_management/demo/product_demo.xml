@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="product_sport_level_attribute" model="product.attribute">
+            <field name="name">Level</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="product_sport_level_attribute_beginner" model="product.attribute.value">
+            <field name="name">Beginner</field>
+            <field name="attribute_id" ref="product_sport_level_attribute"/>
+            <field name="sequence">1</field>
+        </record>
+        <record id="product_sport_level_attribute_intermediate" model="product.attribute.value">
+            <field name="name">Intermediate</field>
+            <field name="attribute_id" ref="product_sport_level_attribute"/>
+            <field name="sequence">2</field>
+        </record>
+        <record id="product_sport_level_attribute_expert" model="product.attribute.value">
+            <field name="name">Expert</field>
+            <field name="attribute_id" ref="product_sport_level_attribute"/>
+            <field name="sequence">3</field>
+        </record>
+    </data>
+</odoo>

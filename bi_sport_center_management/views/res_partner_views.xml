@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_res_partner_form_sport" model="ir.ui.view">
+        <field name="name">res.partner.form.sport</field>
+        <field name="model">res.partner</field>
+        <field name="type">form</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//form" position="inside">
+                <field name="is_student" invisible="1"/>
+                <field name="is_coach" invisible="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page name="sport_center" string="Sport Center" invisible="is_student == False and is_coach == False">
+                    <group>
+                        <group name="sport" string="Sport Details">
+                            <field name="is_student"/>
+                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" string="Current Trainer" invisible="is_student == False"/>
+                            <field name="is_coach"/>
+                            <field name="sport_id" widget="many2many_tags"/>
+                        </group>
+                        <group name="disability" string="Disability">
+                            <field name="is_disability"/>
+                            <field name="disability_description" invisible="is_disability == False"/>
+                            <field name="is_sport" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Parent Information" invisible="is_student == False">
+                        <field name="is_guardian"/>
+                        <field name="is_parking"/>
+                    </group>
+                </page>
+            </xpath>
+
+            <field name="vat" position="attributes">
+                <attribute name="invisible">not is_sport</attribute>
+            </field>
+            <field name="title" position="attributes">
+                <attribute name="invisible">not is_sport</attribute>
+            </field>
+            <field name="category_id" position="attributes">
+                <attribute name="invisible">not is_sport</attribute>
+            </field>
+
+            <xpath expr="//span[@name='address_name']" position="before">
+                <field name="p_name" invisible="not is_student"/>
+                <field name="short_name" invisible="not is_sport"/>
+            </xpath>
+            <xpath expr="//page[@name='contact_addresses']" position="attributes">
+                <attribute name="invisible">is_student or is_coach</attribute>
+            </xpath>
+            <xpath expr="//page[@name='sales_purchases']" position="attributes">
+                <attribute name="invisible">is_student or is_coach</attribute>
+            </xpath>
+
+            <xpath expr="//sheet" position="before">
+                <button name="action_open_student_id_print_wizard" type="object" string="Print Student ID" class="oe_highlight" invisible="not is_student"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the invoice form view to add membership fee display -->
+    <record id="view_account_move_form_inherit_membership_fee" model="ir.ui.view">
+        <field name="name">account.move.form.inherit.membership.fee</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <!-- Add membership fee in the header -->
+            <xpath expr="//field[@name='ref']" position="after">
+                <field name="membership_fee_name" 
+                       string="Membership Fee" 
+                       invisible="not membership_fee_name"
+                       readonly="1"/>
+            </xpath>
+            
+            <!-- Add pricelist after partner -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="pricelist_id" 
+                       invisible="not pricelist_id"
+                       readonly="state != 'draft'"
+                       options="{'no_create': True}"/>
+            </xpath>
+            
+            <!-- Add student admission in other info tab -->
+            <xpath expr="//field[@name='invoice_origin']" position="after">
+                <field name="student_admission_id" 
+                       invisible="not student_admission_id"
+                       readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit the invoice tree view to show membership fee -->
+    <record id="view_account_move_tree_inherit_membership_fee" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.membership.fee</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <!-- Add membership fee column after invoice number -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="membership_fee_name" string="Fee" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search view to filter by membership fee -->
+    <record id="view_account_move_search_inherit_membership_fee" model="ir.ui.view">
+        <field name="name">account.move.search.inherit.membership.fee</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <!-- Add search by membership fee -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="membership_fee_name" string="Membership Fee"/>
+            </xpath>
+            
+            <!-- Add filter by fee -->
+            <xpath expr="//filter[@name='draft']" position="after">
+                <separator/>
+                <filter string="1st Fee" name="first_fee" domain="[('membership_fee_name', '=', '1st')]"/>
+                <filter string="2nd Fee" name="second_fee" domain="[('membership_fee_name', '=', '2nd')]"/>
+            </xpath>
+            
+            <!-- Add group by fee -->
+            <xpath expr="//group" position="inside">
+                <filter string="Membership Fee" name="group_by_fee" context="{'group_by': 'membership_fee_name'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

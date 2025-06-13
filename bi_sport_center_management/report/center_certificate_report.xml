@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<odoo>
+	<template id="report_certificate">
+        <t t-foreach="docs" t-as="o">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                <div style="margin: 0;padding:0;color:black;display: table;font-family:Georgia, serif;font-size: 24px;text-align: center;">
+                        <div style="border: 10px solid rgb(118, 52, 41);width: 900px;height: 563px;display: table-cell;vertical-align: center;">
+                            <div style="color: rgb(118, 46, 35);font-size: 50px;">
+								<img t-if="o.env.user.company_id.logo" t-att-src="image_data_uri(o.env.user.company_id.logo)" style="max-height: 45px;" alt="Logo"/>
+								<br/>
+                                <span t-field="o.env.user.company_id.name"/>
+                            </div>
+                            <div style="color: rgb(153, 127, 93);font-size: 35px;margin: 10px;">
+                                Certificate
+                            </div>
+                            <div style="margin: 20px;font-family:Apple Chancery, cursive;">
+                                Presented to
+                            </div>
+                            <div style="border-bottom: 2px solid black;font-size: 20px;font-style: italic;margin: 20px auto;width: 380px;">
+                                <span t-field="o.user_name"/>
+                            </div>
+							<div style="margin: 20px;font-family:Apple Chancery, cursive;">
+                                For <span t-field="o.title"/>
+                            </div>
+                            <div style="margin: 20px;font-family:Apple Chancery, cursive;">
+                                <span t-field="o.content"/>
+                            </div>
+                            <div style="font-size: 16px;font-style: italic;margin: 20px auto;width: 150px;">
+                               Certificate <span t-field="o.name"/>
+                            </div>
+							<div style="border-bottom: 2px solid black;font-size: 22px;font-style: italic;margin: 20px auto;width: 150px;">
+                                <span t-field="o.date"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+	<record id="action_report_center_certificate" model="ir.actions.report">
+		<field name="name">Certificate</field>
+		<field name="model">center.certificate</field>
+		<field name="report_type">qweb-pdf</field>
+		<field name="report_name">bi_sport_center_management.report_certificate</field>
+		<field name="report_file">bi_sport_center_management.report_certificate</field>
+		<field name="print_report_name">('Certificate - %s' % (object.name))</field>
+		<field name="binding_model_id" ref="model_center_certificate"/>
+		<field name="binding_type">report</field>
+	</record>
+</odoo>
