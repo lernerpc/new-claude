@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="registration_inherit" name="Student - Registration Inherit" inherit_id="bi_sport_center_management.registration">
+        <xpath expr="//div[hasclass('col-12')][.//input[@name='affiliation']]" position="replace">
+            <div class="col-12">
+                <label for="pricelist_id" class="form-label">قائمة الأسعار</label>
+                <select name="pricelist_id" class="form-select" required="1" dir="rtl">
+                    <option value="" label="اختر قائمة الأسعار"/>
+                    <t t-log="pricelists"/>
+                    <t t-foreach="pricelists" t-as="pricelist">
+                        <option t-att-value="pricelist.id">
+                            <t t-esc="pricelist.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+        </xpath>
+    </template>
+</odoo>

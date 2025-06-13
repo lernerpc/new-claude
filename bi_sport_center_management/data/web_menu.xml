@@ -1,0 +1,22 @@
+<odoo>
+    <data noupdate="1">
+        <record id="menu_registration" model="website.menu">
+            <field name="name">Registration</field>
+            <field name="url">/registration</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence" type="int">25</field>
+        </record>
+        <record id="menu_inquiry" model="website.menu">
+            <field name="name">Inquiry</field>
+            <field name="url">/inquiry</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence" type="int">20</field>
+        </record>
+        <record id="menu_book_ground" model="website.menu">
+            <field name="name">Book Ground/Court</field>
+            <field name="url">/book_ground</field>
+            <field name="parent_id" ref="website.main_menu"/>
+            <field name="sequence" type="int">26</field>
+        </record>
+    </data>
+</odoo>

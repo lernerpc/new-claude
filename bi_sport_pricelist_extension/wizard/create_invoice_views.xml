@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="create_invoice_form_view_inherit">
+        <field name="name">create.invoice.form.view.inherit</field>
+        <field name="model">create.invoice</field>
+        <field name="inherit_id" ref="bi_sport_center_management.create_invoice_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <!-- Remove the pricelist_id field -->
+            </xpath>
+        </field>
+    </record>
+</odoo> 

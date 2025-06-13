@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="action_student_id_print_wizard_server" model="ir.actions.server">
+        <field name="name">عرض وطباعة بطاقات العضوية</field>
+        <field name="model_id" ref="bi_sport_center_management.model_student_admission"/>
+        <field name="binding_model_id" ref="bi_sport_center_management.model_student_admission"/>
+        <field name="state">code</field>
+        <field name="binding_type">action</field>
+        <field name="code">
+        action = {
+            'type': 'ir.actions.act_window',
+            'name': 'عرض وطباعة بطاقات العضوية',
+            'res_model': 'student.id.print.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+        }
+        </field>
+    </record>
+
+    <record id="student_admission_view_tree_patch_tags" model="ir.ui.view">
+        <field name="name">student.admission.tree.patch.tags</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="membership_number"/>
+                <field name="printed"/>
+                <field name="first_print_date"/>
+                <field name="last_print_date"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="student_admission_view_form_patch_print" model="ir.ui.view">
+        <field name="name">student.admission.form.patch.print</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_print_and_mark" string="Print ID Card" type="object" class="oe_highlight"/>
+            </xpath>
+            <xpath expr="//sheet/group/group[2]" position="inside">
+                <field name="membership_number" readonly="state in ['cancel', 'student']"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

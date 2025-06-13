@@ -1,0 +1,795 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record model="ir.ui.view" id="student_admission_view_tree">
+        <field name="name">student.admission.tree</field>
+        <field name="model">student.admission</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="Student Admissions" limit="20">
+                <field name="name"/>
+                <field name="student_id"/>
+                <field name="mobile"/>
+                <field name="parent_mobile"/>
+                <field name="student_national_id"/>
+                <field name="parent_national_id"/>
+                <field name ="p_name"/>
+                <field name="activity_ids" widget="many2many_tags" required="1"/>
+                <field name="state" widget="badge" decoration-warning="state == 'enrolled'" decoration-primary="state == 'new'" decoration-success="state == 'student'"/>
+                <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
+                <field name="invoice_count" string="Invoices"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_student_admission_search" model="ir.ui.view">
+        <field name="name">student.admission.search</field>
+        <field name="model">student.admission</field>
+        <field name="arch" type="xml">
+            <search string="Student Admissions">
+                <!-- Default search fields in priority order -->
+                <field name="student_id" string="اسم الطالب"/>
+                <field name="mobile" string="رقم هاتف الطالب"/>
+                <field name="parent_mobile" string="رقم هاتف ولي الأمر"/>
+                <field name="student_national_id" string="الرقم القومي للطالب"/>
+                <field name="parent_national_id" string="الرقم القومي لولي الأمر"/>
+                <field name="p_name" string="اسم ولي الأمر"/>
+                <field name="name" string="رقم التسجيل"/>
+                <field name="activity_ids" string="الأنشطة الرياضية"/>
+                <field name="trainer_id" string="المدرب"/>
+                <field name="email" string="البريد الإلكتروني"/>
+
+                <!-- Filters -->
+                <separator/>
+                <filter string="New Applications" name="new" domain="[('state', '=', 'new')]"/>
+                <filter string="Enrolled" name="enrolled" domain="[('state', '=', 'enrolled')]"/>
+                <filter string="Students" name="students" domain="[('state', '=', 'student')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancel')]"/>
+
+                <separator/>
+
+                <filter string="Not Paid" name="not_paid" domain="[('payment_state', '=', 'not_paid')]"/>
+                <filter string="Partially Paid" name="partial_paid" domain="[('payment_state', '=', 'partial')]"/>
+                <filter string="Fully Paid" name="paid" domain="[('payment_state', '=', 'paid')]"/>
+                <filter string="Payment in Progress" name="in_payment" domain="[('payment_state', '=', 'in_payment')]"/>
+                <filter string="Payment Reversed" name="reversed" domain="[('payment_state', '=', 'reversed')]"/>
+
+                <separator/>
+                <filter string="Disabled Students" name="disabled" domain="[('is_disability', '=', True)]"/>
+                <filter string="Need Parking" name="parking" domain="[('is_parking', '=', True)]"/>
+                <filter string="With Guardian" name="with_guardian" domain="[('is_guardian', '=', True)]"/>
+
+                <separator/>
+
+                <!-- Date filters -->
+                <filter string="This Week" name="this_week" domain="[('create_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter string="This Month" name="this_month" domain="[('create_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter string="Last Month" name="last_month" domain="[('create_date', '&gt;=', ((context_today().replace(day=1)) - datetime.timedelta(days=1)).replace(day=1).strftime('%Y-%m-%d')), ('create_date', '&lt;', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+
+                <!-- Group By -->
+                <group expand="0" string="Group By">
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="Payment State" name="group_payment_state" context="{'group_by': 'payment_state'}"/>
+                    <filter string="Coach/Trainer" name="group_trainer" context="{'group_by': 'trainer_id'}"/>
+                    <filter string="Activities" name="group_activities" context="{'group_by': 'activity_ids'}"/>
+                    <filter string="Registration Date" name="group_date" context="{'group_by': 'create_date:month'}"/>
+                    <filter string="Has Disability" name="group_disability" context="{'group_by': 'is_disability'}"/>
+                    <filter string="Gender" name="group_gender" context="{'group_by': 'gender'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+
+
+
+    <record id="student_admission_view_form" model="ir.ui.view">
+        <field name="name">student.admission.view.form</field>
+        <field name="model">student.admission</field>
+        <field name="arch" type="xml">
+            <form string="Student">
+
+                <header>
+
+                    <field name="payment_state" widget="statusbar" statusbar_visible="not_paid,partial,paid" readonly="1"/>
+                    <button string="Enroll" name="action_enroll" invisible="state != 'new'" type="object" class="oe_highlight"/>
+                    <button string="Make a student" name="action_make_student" invisible="state != 'enrolled'" type="object" class="oe_highlight"/>
+                    <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'student']"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_invoice" class="oe_stat_button" icon="fa-pencil-square-o" invisible ="is_invoiced == False">
+                            <field name='is_invoiced' invisible="1"/>
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Invoice</span>
+
+                            </div>
+                        </button>
+                        <button string="Print Registration" type="object" name="action_print_registration" class="oe_highlight"/>
+
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" class="oe_inline"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Personal Details">
+                            <field name="student_id" widget="res_partner_many2one" readonly="state in ['cancel', 'student']" context="{'res_partner_search_mode': 'customer', 'show_address': 1, 'show_vat': True, 'default_is_student': False}" options='{"always_reload": True}'/>
+                            <field name="mobile" widget="phone" readonly="state in ['cancel', 'student']"/>
+                            <field name="email" widget="email"/>
+                            <field name="p_name" invisible="check_parent == True"/>
+                            <field name="parent_mobile" widget="phone" invisible="check_parent == True"/>
+                            <field name="p1_name" invisible="check_parent == False"/>
+                            <field name="parent1_mobile" widget="phone" invisible="check_parent == False"/>
+                            <field name="check_parent" invisible="1"/>
+                            <field name="check_register" invisible="1" readonly="1"/>
+                        </group>
+                        <group string="Sport Activity Details">
+                            <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" readonly="state in ['cancel', 'student']"/>
+                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" readonly="state in ['cancel', 'student']"/>
+                            <!-- <field name="duration" required= "state == 'enrolled'" readonly="state in ['cancel', 'student']"/> -->
+                        </group>
+                        <group name="disability" string="Disability">
+                            <field name="is_disability"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Parent Information">
+                            <field name="is_guardian"/>
+                            <field name="is_parking"/>
+                        </group>
+                    </group>
+                    <field name="disability_description" placeholder="Describe disability..." invisible="is_disability == False"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_student_admission" model="ir.actions.act_window">
+        <field name="name">Student Admission</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">student.admission</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                    Click here to add a new Student.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_partner_student" model="ir.actions.act_window">
+        <field name="name">Student</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_student', '=', True)]</field>
+        <field name="context">{'default_is_student': True}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                    Click here to add a new Student.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_sport_product_equipment" model="ir.actions.act_window">
+        <field name="name">Equipments</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_equipment', '=', True)]</field>
+        <field name="context">{'default_is_equipment': True, 'default_detailed_type': 'product'}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                    Click here to add a new Sports equipments.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_partner_trainer" model="ir.actions.act_window">
+        <field name="name">Coach</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_coach', '=', True)]</field>
+        <field name="context">{'default_is_coach': True}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                    Click here to add a new Coach.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="student_admission_main_menu" name="Sports Management Center" sequence="20" web_icon="bi_sport_center_management,static/description/icon.png">
+        <menuitem id="student_admission_menu" name="Admission" sequence="20">
+            <menuitem id="admission_student_menu" name="Registrations" sequence="10" action="action_student_admission"/>
+        </menuitem>
+        <menuitem id="student_admission_menu" name="Admission" sequence="30">
+            <menuitem id="partner_student_menu_sub" name="Students" sequence="20" action="action_partner_student"/>
+        </menuitem>
+        <menuitem id="student_sport_menu" name="Sports" sequence="40">
+            <menuitem id="sport_trainer_menu" name="Coach" sequence="10" action="action_partner_trainer"/>
+            <menuitem id="sport_product_equipment_menu" name="Sports Equipments" sequence="1" action="action_sport_product_equipment"/>
+        </menuitem>
+    </menuitem>
+
+
+
+
+    <template id="bi_sport_center_management.registration_print">
+        <html>
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <title>استمارة تسجيل الاشتراك</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+            </head>
+            <body>
+                <div id="printable_content">
+                    <div class="row position-relative">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center print-header">
+                                <div class="receipt-numbers position-absolute">
+                                    <div>رقم الإيصال: ................................</div>
+                                    <div>رقم الاستمارة: ................................</div>
+                                </div>
+                                <div class="header-print w-100">
+                                    <h3>كلية النصر للبنين - فيكتوريا الإسكندرية</h3>
+                                    <h4>المركز الرياضى الصيفى/الشتوي المتخصص</h4>
+                                    <h5>استمارة تسجيل الاشتراك في نشاط المركز الرياضى</h5>
+                                    <hr/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row registration-info">
+                        <div class="col-12">
+                            <div class="section-header bg-primary text-white">
+                                <h6>بيانات التسجيل</h6>
+                            </div>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>رقم التسجيل:</label>
+                                        <div class="field-value-compact" t-field="registration.name"/>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>تاريخ التسجيل:</label>
+                                        <div class="field-value-compact" t-esc="registration.create_date.strftime('%Y-%m-%d') if registration.create_date else ''"/>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>جهة الانتماء:</label>
+                                        <div class="field-value-compact" t-field="registration.pricelist_id.name"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-8">
+                            <div class="section-header bg-primary text-white">
+                                <h6>البيانات الشخصية</h6>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-field-compact">
+                                        <label>اسم الطالب:</label>
+                                        <div class="field-value-compact" t-field="registration.student_id.name"/>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-field-compact">
+                                        <label>الرقم القومي:</label>
+                                        <div class="field-value-compact" t-field="registration.student_national_id"/>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-field-compact">
+                                        <label>تاريخ الميلاد:</label>
+                                        <div class="field-value-compact" t-field="registration.birth_date"/>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-field-compact">
+                                        <label>الجنس:</label>
+                                        <div class="field-value-compact">
+                                            <t t-if="registration.gender == 'male'">ذكر</t>
+                                            <t t-elif="registration.gender == 'female'">أنثى</t>
+                                            <t t-else="">غير محدد</t>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-field-compact">
+                                        <label>رقم هاتف الطالب:</label>
+                                        <div class="field-value-compact" t-field="registration.mobile"/>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-field-compact">
+                                        <label>أمراض:</label>
+                                        <div class="field-value-compact" t-if="registration.is_disability">نعم</div>
+                                        <div class="field-value-compact" t-else="">لا</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-field-compact student-photo-container">
+                                <div class="field-value-compact photo-frame">
+                                    <t t-if="registration.student_photo">
+                                        <img t-att-src="'data:image/png;base64,' + registration.student_photo.decode() if registration.student_photo else ''" alt="Student Photo" class="student-image"/>
+                                    </t>
+                                    <t t-elif="registration.student_id.image_1920">
+                                        <img t-att-src="'data:image/png;base64,' + registration.student_id.image_1920.decode() if registration.student_id.image_1920 else ''" alt="Student Photo" class="student-image"/>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="no-photo-placeholder">
+                                            <span>لا توجد صورة</span>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="section-header bg-primary text-white">
+                                <h6>بيانات ولي الأمر</h6>
+                            </div>
+                            <div class="row">
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>اسم ولي الأمر:</label>
+                                        <div class="field-value-compact" t-field="registration.p_name"/>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>الرقم القومي:</label>
+                                        <div class="field-value-compact" t-field="registration.parent_national_id"/>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>رقم الهاتف:</label>
+                                        <div class="field-value-compact" t-field="registration.parent_mobile"/>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>مرافق:</label>
+                                        <div class="field-value-compact" t-if="registration.is_guardian">نعم</div>
+                                        <div class="field-value-compact" t-else="">لا</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="form-field-compact">
+                                        <label>موقف سيارة:</label>
+                                        <div class="field-value-compact" t-if="registration.is_parking">نعم</div>
+                                        <div class="field-value-compact" t-else="">لا</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-8">
+                            <div class="section-header bg-primary text-white">
+                                <h6>الأنشطة والأسعار</h6>
+                            </div>
+                            <table class="table table-compact">
+                                <tr>
+                                    <th>النشاط</th>
+                                    <th>السعر</th>
+                                </tr>
+                                <t t-foreach="registration.activity_ids" t-as="activity">
+                                    <tr>
+                                        <td t-esc="activity.name"/>
+                                        <td>
+                                            <t t-esc="activity.list_price"/>
+ جنيه
+                                        </td>
+                                    </tr>
+                                </t>
+                            </table>
+                        </div>
+                        <div class="col-4">
+                            <div class="price-summary">
+                                <div>ملخص التكلفة</div>
+                                <div>الأنشطة:                                    <t t-esc="sum(activity.list_price for activity in registration.activity_ids)"/>
+ جنيه</div>
+                                <div>البطاقة: 50 جنيه</div>
+                                <div>الاستمارة: 50 جنيه</div>
+                                <t t-if="registration.is_guardian">
+                                    <div>المرافق: 50 جنيه</div>
+                                </t>
+                                <hr/>
+                                <div>الإجمالي:                                    <t t-esc="sum(activity.list_price for activity in registration.activity_ids) + 100 + (50 if registration.is_guardian else 0)"/>
+ جنيه</div>
+                            </div>
+                        </div>
+                    </div>
+                    <t t-if="registration.is_disability">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="section-header bg-primary text-white">
+                                    <h6>تفاصيل الأمراض</h6>
+                                </div>
+                                <div class="form-field-compact">
+                                    <div class="field-value-compact" t-field="registration.disability_description"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="section-header bg-primary text-white">
+                                <h6>إقرار ولي الأمر</h6>
+                            </div>
+                            <div class="declaration-compact">
+                                <p>
+                                أقر أنا /                                    <t t-esc="registration.p_name"/>
+ ولي أمر الطالب، بالتعهد بالالتزام بالإجراءات الاحترازية 
+                                والانصراف عقب الانتهاء من التدريب مباشرة، وأن ابني لا يعاني من أية مشكلات صحية.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row signature-section-compact">
+                        <div class="col-6">
+                            <div style="font-size: 14px;">توقيع ولي الأمر</div>
+                            <div style="border-bottom: 1px solid #000; height: 30px;"/>
+                        </div>
+                        <div class="col-6">
+                            <div style="font-size: 14px;">التاريخ</div>
+                            <div style="border-bottom: 1px solid #000; height: 30px;"/>
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                /* Enhanced Screen styles for student photo */
+                .form-field-compact {
+                    margin-bottom: 6px;
+                }
+                .form-field-compact label {
+                    font-weight: bold;
+                    font-size: 14px;
+                    margin-bottom: 3px;
+                    color: #495057;
+                    display: block;
+                }
+                .field-value-compact {
+                    border: 1px solid #ced4da;
+                    border-radius: 4px;
+                    padding: 6px 8px;
+                    background-color: #fff;
+                    min-height: 28px;
+                    display: flex;
+                    align-items: center;
+                    font-size: 12px;
+                }
+
+                /* Simple 4x6 photo styles */
+                .student-photo-container .field-value-compact {
+                    width: 60mm;
+                    height: 80mm;
+                    padding: 4px;
+                    border: 2px solid #007bff;
+                    border-radius: 4px;
+                    background: #f8f9fa;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .student-image {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 2px;
+                }
+
+                .no-photo-placeholder {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #6c757d;
+                    text-align: center;
+                    width: 100%;
+                    height: 100%;
+                    border: 1px dashed #ccc;
+                    font-size: 12px;
+                }
+
+                /* A4 Print Styles with enhanced photo handling */
+                @media print {
+                    @page {
+                        size: A4;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    
+                    body * {
+                        visibility: hidden;
+                    }
+                    
+                    #printable_content, #printable_content * {
+                        visibility: visible;
+                    }
+                    
+                    #printable_content {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 210mm;
+                        height: 297mm;
+                        padding: 8mm !important;
+                        margin: 0 !important;
+                        background: white !important;
+                        border: 3px solid #007bff !important;
+                        box-shadow: none !important;
+                        font-family: Arial, sans-serif !important;
+                        overflow: hidden;
+                        box-sizing: border-box;
+                    }
+                    
+                    /* Header styling for print */
+                    .print-header {
+                        margin-bottom: 12px !important;
+                    }
+                    
+                    .receipt-numbers {
+                        top: -5px !important;
+                        right: 0 !important;
+                        font-size: 11px !important;
+                        font-weight: bold !important;
+                        text-align: right !important;
+                        line-height: 1.8 !important;
+                    }
+                    .receipt-numbers div {
+                        border: 1px solid #333 !important;
+                        padding: 3px 6px !important;
+                        background-color: #f8f9fa !important;
+                        border-radius: 2px !important;
+                        margin-bottom: 6px !important;
+                    }
+                    
+                    .header-print {
+                        text-align: center;
+                        margin-top: 15px !important;
+                        margin-bottom: 12px !important;
+                        page-break-after: avoid;
+                    }
+                    .header-print h3 {
+                        font-size: 18px !important;
+                        margin: 0 0 4px 0 !important;
+                        color: #007bff !important;
+                        font-weight: bold !important;
+                    }
+                    .header-print h4 {
+                        font-size: 16px !important;
+                        margin: 0 0 4px 0 !important;
+                        color: #28a745 !important;
+                        font-weight: bold !important;
+                    }
+                    .header-print h5 {
+                        font-size: 14px !important;
+                        margin: 0 0 6px 0 !important;
+                        color: #6c757d !important;
+                    }
+                    .header-print hr {
+                        border-top: 2px solid #007bff !important;
+                        margin: 6px 0 !important;
+                    }
+                    
+                    /* Section headers */
+                    .section-header {
+                        padding: 5px 10px !important;
+                        margin: 6px 0 4px 0 !important;
+                        border-radius: 4px !important;
+                        page-break-after: avoid !important;
+                        background-color: #007bff !important;
+                        color: white !important;
+                    }
+                    .section-header h6 {
+                        margin: 0 !important;
+                        font-size: 12px !important;
+                        font-weight: bold !important;
+                        color: white !important;
+                    }
+                    
+                    /* Compact form fields */
+                    .form-field-compact {
+                        margin-bottom: 4px !important;
+                    }
+                    .form-field-compact label {
+                        font-size: 11px !important;
+                        margin-bottom: 2px !important;
+                        font-weight: bold !important;
+                    }
+                    .field-value-compact {
+                        border: 1px solid #333 !important;
+                        padding: 3px 5px !important;
+                        min-height: 20px !important;
+                        font-size: 10px !important;
+                        background-color: white !important;
+                        border-radius: 2px !important;
+                    }
+                    
+                    /* Simple 4x6 Student photo for print */
+                    .student-photo-container .field-value-compact {
+                        width: 40mm !important;
+                        height: 60mm !important;
+                        border: 2px solid #333 !important;
+                        border-radius: 4px !important;
+                        padding: 2mm !important;
+                        background: white !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                    }
+                    
+                    .student-image {
+                        width: 100% !important;
+                        height: 100% !important;
+                        object-fit: cover !important;
+                        border-radius: 2px !important;
+                    }
+                    
+                    .no-photo-placeholder {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        color: #666 !important;
+                        text-align: center !important;
+                        width: 100% !important;
+                        height: 100% !important;
+                        border: 1px dashed #999 !important;
+                        font-size: 10px !important;
+                    }
+                    
+                    /* Grid adjustments */
+                    .row {
+                        margin: 0 !important;
+                    }
+                    .col-2, .col-4, .col-6, .col-8, .col-10, .col-12 {
+                        padding: 0 4px !important;
+                    }
+                    
+                    /* Activities table */
+                    .table-compact {
+                        border-collapse: collapse !important;
+                        width: 100% !important;
+                        border: 2px solid #333 !important;
+                    }
+                    .table-compact th,
+                    .table-compact td {
+                        border: 1px solid #333 !important;
+                        padding: 4px 6px !important;
+                        font-size: 10px !important;
+                    }
+                    .table-compact th {
+                        background-color: #f0f0f0 !important;
+                        font-weight: bold !important;
+                        font-size: 11px !important;
+                    }
+                    
+                    /* Price summary */
+                    .price-summary {
+                        padding: 6px !important;
+                        border-radius: 5px !important;
+                        background: #28a745 !important;
+                        color: white !important;
+                        height: auto !important;
+                    }
+                    .price-summary div {
+                        font-size: 10px !important;
+                        margin-bottom: 2px !important;
+                    }
+                    .price-summary div:first-child {
+                        font-size: 12px !important;
+                        font-weight: bold !important;
+                    }
+                    .price-summary div:last-child {
+                        font-size: 13px !important;
+                        font-weight: bold !important;
+                    }
+                    .price-summary hr {
+                        margin: 4px 0 !important;
+                        border-color: rgba(255,255,255,0.3) !important;
+                    }
+                    
+                    /* Declaration section */
+                    .declaration-compact {
+                        background-color: #f8f9fa !important;
+                        border: 2px solid #333 !important;
+                        padding: 8px !important;
+                        border-radius: 4px !important;
+                        margin-bottom: 8px !important;
+                    }
+                    .declaration-compact p {
+                        font-size: 10px !important;
+                        line-height: 1.4 !important;
+                        margin: 0 !important;
+                    }
+                    
+                    /* Signature section */
+                    .signature-section-compact {
+                        margin-top: 10px !important;
+                    }
+                    .signature-section-compact div[style*="font-size"] {
+                        font-size: 10px !important;
+                        margin-bottom: 3px !important;
+                        font-weight: bold !important;
+                    }
+                    .signature-section-compact div[style*="border-bottom"] {
+                        border-bottom: 2px solid #333 !important;
+                        height: 18px !important;
+                        margin: 4px 12px !important;
+                    }
+                    
+                    /* Preserve colors in print */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    
+                    /* Background color preservation */
+                    .section-header,
+                    .price-summary, .field-value-compact[style*="background-color"],
+                    .table-compact th,
+                    .student-photo-container .field-value-compact {
+                        -webkit-print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    
+                    /* Ensure page doesn't break awkwardly */
+                    .registration-info {
+                        page-break-inside: avoid;
+                    }
+                    
+                    /* Make sure everything fits on one page */
+                    .section-header,
+                    .row,
+                    .declaration-compact,
+                    .signature-section-compact {
+                        page-break-inside: avoid;
+                    }
+                }
+                </style>
+
+                <!-- Auto-trigger print when page loads -->
+                <script>
+                window.onload = function() {
+                    // Enable background graphics for better color printing
+                    const css = '@media print { * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; } }';
+                    const style = document.createElement('style');
+                    style.type = 'text/css';
+                    style.appendChild(document.createTextNode(css));
+                    document.head.appendChild(style);
+                    
+                    // Auto-trigger print dialog when page loads
+                    setTimeout(function() {
+                        window.print();
+                        // Close the window after printing (optional)
+                        window.onafterprint = function() {
+                            window.close();
+                        };
+                    }, 500); // Small delay to ensure page is fully loaded
+                };
+                </script>
+            </body>
+        </html>
+    </template>
+
+
+</odoo>

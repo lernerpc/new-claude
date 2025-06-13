@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="view_product_template_form_sport" model="ir.ui.view">
+        <field name="name">product.template.form.sport</field>
+        <field name="model">product.template</field>
+        <field name="type">form</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='barcode']" position="after">
+                <!-- <field name="is_sport" readonly="1"/> -->
+                 <field name="is_sportname" readonly="1"/>
+                <field name="is_equipment" readonly="1"/>
+                <field name="is_space" readonly="1"/>
+            </xpath>
+             <xpath expr="//field[@name='product_tooltip']" position="after">
+                <field name="sport_id" invisible="is_space == False" widget="many2many_tags"/>
+             </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_product_form_sport" model="ir.ui.view">
+        <field name="name">product.product.form.sport</field>
+        <field name="model">product.product</field>
+        <field name="type">form</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='barcode']" position="after">
+                <!-- <field name="is_sport" readonly="1"/> -->
+                 <field name="is_sportname" readonly="1"/>
+                <field name="is_equipment" readonly="1"/>
+                <field name="is_space" readonly="1"/>
+            </xpath>
+             <xpath expr="//field[@name='product_tooltip']" position="after">
+                <field name="sport_id" invisible="is_space == False" widget="many2many_tags"/>
+             </xpath>
+        </field>
+    </record>
+
+    <record id="action_sport_product" model="ir.actions.act_window">
+        <field name="name">Sports Center</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_sport', '=', True)]</field>
+        <field name="context">{'default_is_sport': True, 'default_company_type': 'company'}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click here to add a new Sport.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_sports_name" model="ir.actions.act_window">
+        <field name="name">Sports Name</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_sportname', '=', True)]</field>
+        <field name="context">{'default_is_sportname': True, 'default_detailed_type': 'service'}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click here to add a new Sport.
+            </p>
+        </field>
+    </record>
+
+
+    <record id="action_sport_product_space" model="ir.actions.act_window">
+        <field name="name">Ground / Court</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">kanban,tree,form</field>
+        <field name="domain">[('is_space', '=', True)]</field>
+        <field name="context">{'default_is_space': True, 'default_detailed_type': 'service'}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click here to add a new Sport equipments.
+            </p>
+        </field>
+    </record>
+
+
+    <menuitem id="configuration_menu" name="Configuration" parent="bi_sport_center_management.student_admission_main_menu" sequence="50">
+        <menuitem id="sport_name_menu_sub" name="Sports name" sequence="1" action="action_sports_name"/>
+        <menuitem id="sport_product_menu_sub" name="Sports Center" sequence="10" action="action_sport_product"/>
+        <menuitem id="sport_product_space_menu_sub" name="Ground / Court" sequence="10" action="action_sport_product_space"/>
+    </menuitem>
+    
+</odoo>

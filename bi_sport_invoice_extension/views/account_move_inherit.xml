@@ -1,0 +1,23 @@
+<odoo>
+    <!-- Inherit the tree view to add Fee Name (ref) column -->
+    <record id="view_move_tree_inherit_fee_ref" model="ir.ui.view">
+        <field name="name">account.move.tree.inherit.fee.ref</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_tree"/>
+        <field name="arch" type="xml">
+            <!-- Add Fee Name (ref) column after Number -->
+            <field name="name" position="after">
+                <field name="ref" string="Fee Name"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Modify the action to set default sort order -->
+    <record id="action_move_out_invoice_type_inherit_fee_ref" model="ir.actions.act_window">
+        <field name="name">Customer Invoices - Sorted by Fee</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form,kanban,calendar,pivot,graph</field>
+        <field name="domain">[('move_type', '=', 'out_invoice')]</field>
+        <field name="context">{'search_default_out_invoice': 1, 'default_move_type': 'out_invoice', 'order': 'ref asc'}</field>
+    </record>
+</odoo>

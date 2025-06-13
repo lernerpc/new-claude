@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="create_invoice_form_view">
+        <field name="name">create.invoice.form.view</field>
+        <field name="model">create.invoice</field>
+        <field name="arch" type="xml">
+            <form string="Create Invoice Massage">
+                <sheet>
+                    <h3>Do you want to create Invoice for this admission?</h3>
+                </sheet>
+                <footer>
+                    <button name="action_create_invoice" class="btn btn-primary" string="Create Invoice" type="object"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_create_invoice" model="ir.actions.act_window">
+        <field name="name">Create Invoice</field>
+        <field name="res_model">create.invoice</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

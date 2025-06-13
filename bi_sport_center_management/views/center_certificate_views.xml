@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="center_certificate_view_tree">
+            <field name="name">center.certificate.tree</field>
+            <field name="model">center.certificate</field>
+            <field name="type">tree</field>
+            <field name="arch" type="xml">
+                <tree string="Certificates Center">
+                    <field name="name"/>
+                    <field name="title"/>
+                    <field name="user_name"/>
+                    <field name="user_type"/>
+                    <field name="description"/>
+                </tree>
+            </field>
+        </record>
+        <record id="center_certificate_view_form" model="ir.ui.view">
+            <field name="name">center.certificate.view.form</field>
+            <field name="model">center.certificate</field>
+            <field name="arch" type="xml">
+                <form string="Certificate Center">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" class="oe_inline"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="title"/>
+                                <field name="user_name"/>
+                            </group>
+                            <group>
+                                <field name="date"/>
+                                <field name="user_type"/>
+                                <field name="description"/>
+                            </group>
+                        </group>
+                        <group string="Content For display"/>
+                        <field name="content"/>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="action_center_certificate" model="ir.actions.act_window">
+            <field name="name">Certificate</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">center.certificate</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="oe_view_nocontent_create">
+                    Click here to add a New Center Certificate.
+                </p>
+            </field>
+        </record>
+        <menuitem id="center_certificate_menu_sub" name="Certificates" parent="bi_sport_center_management.configuration_menu" sequence="10" action="action_center_certificate"/>           
+    </data>
+</odoo>

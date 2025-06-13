@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record model="ir.ui.view" id="student_inquiry_view_tree">
+        <field name="name">student.inquiry.tree</field>
+        <field name="model">student.inquiry</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="Student Inquiries">
+                <field name="name"/>
+                <field name="first_name"/>
+                <field name="last_name"/>
+                <field name="mobile"/>
+                <field name="email"/>
+                <field name="level_id"/>
+                <field name="duration"/>
+                <field name="query" />
+                <field name="state" widget="badge" decoration-primary="state == 'new'" decoration-success="state == 'confirmed'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="student_inquiry_view_form" model="ir.ui.view">
+        <field name="name">student.inquiry.view.form</field>
+        <field name="model">student.inquiry</field>
+        <field name="arch" type="xml">
+            <form string="Student Inquiry">
+                <header>
+                    <button string="Admission" name="action_admission" invisible="state != 'new'" type="object" class="oe_highlight"/>
+                    <button string="Send Answer" name="action_send_ans" type="object" class="oe_highlight" invisible="state in ['cancel', 'confirmed']"/>
+                    <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'confirmed']"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_open_admission" class="oe_stat_button" icon="fa-pencil-square-o" invisible = "is_admission == False">
+                            <field name='is_admission' invisible="1"/>
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Admissions</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" class="oe_inline"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Personal Details">
+                            <field name="first_name" readonly = "state in ['cancel', 'confirmed']"/>
+                            <field name="last_name" readonly = "state in ['cancel', 'confirmed']"/>
+                            <field name="mobile" readonly = "state in ['cancel', 'confirmed']"/>
+                            <field name="email" readonly = "state in ['cancel', 'confirmed']"/>
+                            <field name="p_name"/>
+                            <field name="parent_mobile" widget="phone"/>
+                            <field name="check_parent" invisible="1"/>
+                        </group>
+                        <group string="Sport Activity Details">
+                            <field name="sport_id" options="{'no_create_edit': True, 'no_create': True}" readonly = "state in ['cancel', 'confirmed']" widget="many2many_tags"/>
+                            <field name="level_id" options="{'no_create_edit': True, 'no_create': True}" readonly = "state in ['cancel', 'confirmed']"/>
+                            <field name="duration" required="state == 'enrolled'" readonly = "state in ['cancel', 'confirmed']"/>
+                        </group>
+                        <group/>
+                        <field name="query"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_student_inquiry" model="ir.actions.act_window">
+        <field name="name">Student Inquiries</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">student.inquiry</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click here to add a new Inquiry.
+            </p>
+        </field>
+    </record>
+    <menuitem id="student_inquiry_menu_sub" name="Inquiry" parent="bi_sport_center_management.student_admission_menu" sequence="30" action="action_student_inquiry"/>
+</odoo>

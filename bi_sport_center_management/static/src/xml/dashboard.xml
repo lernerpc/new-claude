@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<template>
+
+    <t t-name="CenterDashboard">
+      <div class="oh_dashboards" style="margin-top: 20px;">
+            <div class="container-fluid o_dashboard">
+                <h1 style="margin: 5px;">Sports Center Dashboard</h1>
+            </div>
+        </div>
+        <div class="row main-section" style="margin-left: 120px;">
+            <div class="col-md-4 col-sm-12 tot_inquiries oh-payslip" t-on-click="tot_inquiries">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#7B7F0F; padding-top:5%;">
+                                <i class="fa fa-question" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>New Inquiries</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_inquiries"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6 tot_students oh-payslip" t-on-click="tot_students">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#e08048; padding-top:5%;">
+                                <i class="fa fa-address-book" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Total Students</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_students"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12 tot_trainers oh-payslip" t-on-click="tot_trainers">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#528ff5; padding-top:5%;">
+                                <i class="fa fa-user-circle" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Total Coach</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_trainers"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row main-section" style="margin-left: 120px;">
+            <div class="col-md-4 col-sm-12 avai_events oh-payslip" t-on-click="avai_events">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#cecfc2; padding-top:5%;">
+                                <i class="fa fa-list-alt" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Available Events</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_center_events"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12 tot_grounds oh-payslip" t-on-click="tot_grounds">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#1d9e74; padding-top:5%;">
+                                <i class="fa fa-circle-o" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Grounds / Court</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_center_spaces"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12 tot_sports oh-payslip" t-on-click="tot_sports">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#1d9e74; padding-top:5%;">
+                                <i class="fa fa-check" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Sports Center</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_sports"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row main-section" style="margin-left: 120px;">
+            <div class="col-md-4 col-sm-12 tot_booking oh-payslip" t-on-click="tot_booking">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#e08048; padding-top:5%;">
+                                <i class="fa fa-list-alt" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Bookings</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_bookings"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12 tot_admissions oh-payslip" t-on-click="tot_admissions">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#528ff5; padding-top:5%;">
+                                <i class="fa fa-user-o" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Registrations</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_confirm_admissions"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-12 tot_equipment oh-payslip" t-on-click="tot_equipment">
+                <div class="oh-card" style="width: 410px;margin-left: 20px;">
+                    <div class="oh-card-body">
+                        <div class="stat-widget-one">
+                            <div class="stat-icon" style="background:#1d9e74; padding-top:5%;">
+                                <i class="fa fa-futbol-o" style="font-size: 60px;"/>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-head mt-3" style="margin-bottom:0px;">
+                                    <strong>Total Equipment</strong>
+                                </div>
+                                <div class="stat_count" style="font-size:43px;margin-left: 26px;">
+                                    <t class="m-3" t-esc="state.total_equipment"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</template>

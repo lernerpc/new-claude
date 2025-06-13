@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data noupdate="1">
+        <record id="student_inquiry_email_template" model="mail.template">
+            <field name="name">Student Inquiry Email</field>
+            <field name="model_id" ref="bi_sport_center_management.model_student_inquiry"/>
+            <field name="subject">Inquiry {{object.name}} is Generated</field>
+            <field name="email_from">"{{ object.env.user.company_id.name }}" &lt;{{ (object.env.user.company_id.email or user.email) }}&gt;</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+                <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                    <tr>
+                        <td valign="top">
+                            <div style="font-size: 13px; margin: 0px; padding: 0px;">
+                                Hello <t t-out="object.first_name or ''">Visitor</t>,<br/>
+                                <br/>
+                                Thank you for your interest.
+                                <br/>
+                                Your inquiry application <t t-out="object.name or ''"></t> is registered.
+                                <br/>
+                                <br/>
+                                We understand that your time is valuable, so we will make every effort to provide a prompt and comprehensive response as soon as possible.
+                                <br/>
+                                <br/>
+                                Best regards,
+                                <t t-if="not is_html_empty(user.signature)">
+                                    <br/><br/>
+                                    <t t-out="user.signature or ''">--<br/>Mitchell Admin</t>
+                                </t>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+
+        <record id="student_inquiry_ans_email_template" model="mail.template">
+            <field name="name">Student Inquiry Answer Email</field>
+            <field name="model_id" ref="bi_sport_center_management.model_student_inquiry"/>
+            <field name="subject">Related to inquiry {{object.name}}</field>
+            <field name="email_from">"{{ object.env.user.company_id.name }}" &lt;{{ (object.env.user.company_id.email or user.email) }}&gt;</field>
+            <field name="email_to">{{ object.email }}</field>
+            <field name="body_html" type="html">
+                <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                    <tr>
+                        <td valign="top">
+                            <div style="font-size: 13px; margin: 0px; padding: 0px;">
+                                Hello <t t-out="object.first_name or ''">Visitor</t>,<br/>
+                                <br/>
+                                Thank you for your interest.
+                                <br/>
+                                Your inquiry application <t t-out="object.name or ''"></t> is registered.
+                                <br/>
+                                <br/>
+                                <br/>
+                                Best regards,
+                                <t t-if="not is_html_empty(user.signature)">
+                                    <br/><br/>
+                                    <t t-out="user.signature or ''">--<br/>Mitchell Admin</t>
+                                </t>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

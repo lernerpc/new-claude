@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_membership_fees_user,access_membership_fees_user,model_sport_membership_fees,base.group_user,1,1,1,1
+access_membership_fees_manager,access_membership_fees_manager,model_sport_membership_fees,base.group_system,1,1,1,1

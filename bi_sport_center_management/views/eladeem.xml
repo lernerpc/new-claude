@@ -1,0 +1,1042 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+
+    <template id="registration_create_massage" name="Registration - Message">
+        <t t-call="website.layout">
+            <div id="wrap" dir="rtl">
+                <div class="oe_structure">
+                    <div class="container text-center mt-4">
+                        <t t-if="admission">
+                            <div class="alert alert-success" role="alert" style="border: 2px solid #28a745; border-radius: 0.5rem; padding: 1.5rem;">
+                                <h4 class="alert-heading">شكرًا لك!</h4>
+                                <p>
+                                    <t t-esc="massage"/>
+                                </p>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-warning" role="alert" style="border: 2px solid #ffc107; border-radius: 0.5rem; padding: 1.5rem;">
+                                <h4 class="alert-heading">عذرًا!</h4>
+                                <p>
+                                    <t t-esc="massage"/>
+ الرجاء المحاولة مرة أخرى.</p>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="registration" name="Student - Registration">
+        <t t-call="website.layout">
+            <div id="wrap" dir="rtl">
+                <style>
+                    .form-label, .form-check-label {
+                        font-weight: bold;
+                        text-align: right;
+                    }
+                    .form-control, .form-select {
+                        text-align: right;
+                        border: 1px solid #ced4da;
+                        border-radius: 0.25rem;
+                    }
+                    .form-control:focus, .form-select:focus {
+                        border-color: #86b7fe;
+                        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+                    }
+                    select[multiple] {
+                        min-height: 160px;
+                        background-color: #fff;
+                        cursor: pointer;
+                        padding: 0.5rem;
+                    }
+                    .pull-left {
+                        float: right !important;
+                    }
+                    hr {
+                        margin: 1.5rem 0;
+                        border-top: 1px solid rgba(0, 0, 0 , 0.1);
+                    }
+                    .btn-primary, .btn-secondary {
+                        background-color: #007bff;
+                        border-color: #007bff;
+                        border-radius: 0.25rem;
+                        margin-right: 10px;
+                    }
+                    .btn-primary:hover, .btn-secondary:hover {
+                        background-color: #0056b3;
+                        border-color: #004085;
+                    }
+                    .form-check-input {
+                        margin-left: 0.25rem;
+                        margin-right: 0;
+                    }
+                    #registration_create_form {
+                        border: 2px solid #007bff;
+                        border-radius: 0.5rem;
+                        padding: 1.5rem;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        background-color: #fff;
+                    }
+                    .declaration-input {
+                        border: 0;
+                        border-bottom: 1px solid #ced4da;
+                        border-radius: 0;
+                        background-color: transparent;
+                        width: 50%;
+                        display: inline-block;
+                        margin-right: 0.5rem;
+                    }
+                    .header-text {
+                        font-weight: bold;
+                        text-align: center;
+                        margin-bottom: 0.5rem;
+                    }
+                </style>
+
+                <script type="text/javascript">
+
+                    document.addEventListener('DOMContentLoaded', function() {                        
+                        // Show/hide disability description based on checkbox
+                        const disabilityCheckbox = document.getElementById('is_disability');
+                        const disabilityDescription = document.getElementById('disability_description');
+                        if (disabilityCheckbox) {
+                            disabilityCheckbox.addEventListener('change', function() {
+                                disabilityDescription.classList.toggle('d-none', !this.checked);
+                            });
+                        }
+
+                        // Print button functionality
+                        const printButton = document.getElementById('print_registration');
+                        if (printButton) {
+                            printButton.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const form = document.querySelector('#registration_create_form form');
+                                const formData = new FormData(form);
+                                let htmlContent = `
+                    <html>
+                        <head>
+                            <title>تسجيل المركز الرياضي</title>
+                            <style>
+                                @page {
+                                    size: A4;
+                                    margin: 0;
+                                }
+                                body {
+                                    font-family: Arial, sans-serif;
+                                    direction: rtl;
+                                    margin: 0;
+                                    padding: 20px;
+                                    background: #fff;
+                                    font-size: 16px;
+                                }
+                                .header-text {
+                                    font-weight: bold;
+                                    text-align: center;
+                                    margin-bottom: 0.5rem;
+                                    font-size: 18px;
+                                }
+                                .header-text div {
+                                    margin-bottom: 0.25rem;
+                                }
+                                h6 {
+                                    font-weight: bold;
+                                    margin: 0.75rem 0 0.25rem;
+                                    color: #2c3e50;
+                                    font-size: 16px;
+                                }
+                                hr {
+                                    margin: 0.25rem 0 0.5rem;
+                                    border-top: 1px solid rgba(0, 0, 0, 0.1);
+                                }
+                                .section {
+                                    margin-bottom: 0.75rem;
+                                }
+                                .field-row {
+                                    display: flex;
+                                    gap: 1rem;
+                                    margin-bottom: 0.5rem;
+                                }
+                                .field {
+                                    flex: 1;
+                                    margin-bottom: 0.25rem;
+                                }
+                                .field label {
+                                    font-weight: bold;
+                                    display: block;
+                                    margin-bottom: 0.125rem;
+                                    color: #495057;
+                                    font-size: 15px;
+                                }
+                                .field-value {
+                                    color: #212529;
+                                    padding: 0.25rem 0.5rem;
+                                    border: 1px solid #ced4da;
+                                    border-radius: 0.25rem;
+                                    background-color: #fff;
+                                    display: inline-block;
+                                    width: 100%;
+                                    font-size: 15px;
+                                }
+                                .declaration-section {
+                                    margin: 0.75rem 0;
+                                    padding: 0.5rem;
+                                    border: 1px solid #dee2e6;
+                                    border-radius: 0.25rem;
+                                    font-size: 15px;
+                                }
+                                .declaration-input {
+                                    border: 0;
+                                    border-bottom: 1px solid #ced4da;
+                                    border-radius: 0;
+                                    background-color: transparent;
+                                    width: 50%;
+                                    display: inline-block;
+                                    margin-right: 0.5rem;
+                                }
+                                .footer {
+                                    text-align: center;
+                                    margin-top: 1rem;
+                                    padding-top: 0.5rem;
+                                    border-top: 1px solid #dee2e6;
+                                    color: #6c757d;
+                                    font-size: 15px;
+                                }
+                                @media print {
+                                    body {
+                                        padding: 5px;
+                                    }
+                                    .field-value {
+                                        border: none;
+                                        padding: 0;
+                                    }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header-text">
+                                <div>كلية النصر للبنين - فيكتوريا الإسكندرية</div>
+                                <div>الاستمارة: 50 جنيهاً</div>
+                                <div>المركز الرياضى الصيفى المتخصص</div>
+                                <div>استمارة تسجيل الاشتراك في نشاط المركز الرياضى</div>
+                            </div>
+
+                            <div class="section">
+                                <h6>البيانات الشخصية</h6>
+                                <hr/>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>الاسم الأول</label>
+                                        <span class="field-value">${formData.get('fname') || ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>اسم العائلة</label>
+                                        <span class="field-value">${formData.get('lname') || ''}</span>
+                                    </div>
+                                </div>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>تاريخ الميلاد</label>
+                                        <span class="field-value">${formData.get('birth_date') || ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>الجنس</label>
+                                        <span class="field-value">${formData.get('gender') === 'male' ? 'ذكر' : formData.get('gender') === 'female' ? 'أنثى' : ''}</span>
+                                    </div>
+                                </div>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>اسم ولي الأمر (كامل)</label>
+                                        <span class="field-value">${formData.get('parent_fullname') || ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>الرقم القومي لولي الأمر</label>
+                                        <span class="field-value">${formData.get('parent_national_id') || ''}</span>
+                                    </div>
+                                </div>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>رقم هاتف ولي الأمر</label>
+                                        <span class="field-value">${formData.get('parent_mobile') || ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <h6>بيانات التواصل</h6>
+                                <hr/>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>البريد الإلكتروني</label>
+                                        <span class="field-value">${formData.get('email') || ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>رقم الهاتف</label>
+                                        <span class="field-value">${formData.get('mobile') || ''}</span>
+                                    </div>
+                                </div>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>العنوان</label>
+                                        <span class="field-value">${formData.get('address') || ''}</span>
+                                    </div>
+                                </div>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>المدينة</label>
+                                        <span class="field-value">${formData.get('city') || ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>المحافظة</label>
+                                        <span class="field-value">${formData.get('state') ? document.querySelector('#state option[value="' + formData.get('state') + '"]')?.textContent || '' : ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>الرمز البريدي</label>
+                                        <span class="field-value">${formData.get('zip') || ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <h6>الاحتياجات الخاصة</h6>
+                                <hr/>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>هل هناك إعاقة؟</label>
+                                        <span class="field-value">${formData.get('is_disability') ? 'نعم' : 'لا'}</span>
+                                    </div>
+                                    ${formData.get('is_disability') ? `
+                                    <div class="field">
+                                        <label>وصف الإعاقة</label>
+                                        <span class="field-value">${formData.get('disability_description') || ''}</span>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <h6>الانتماء</h6>
+                                <hr/>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>الانتماء</label>
+                                        <span class="field-value">${
+                                            formData.get('affiliation') === 'college_children' ? 'أبناء الكلية' :
+                                            formData.get('affiliation') === 'national_institutes' ? 'أبناء معاهد قومية' :
+                                            formData.get('affiliation') === 'college_workers' ? 'أبناء عاملي الكلية' :
+                                            formData.get('affiliation') === 'outside_college' ? 'خارج الكلية' : ''
+                                        }</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <h6>تفاصيل الأنشطة</h6>
+                                <hr/>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>اسم النشاط</label>
+                                        <span class="field-value">${formData.get('activity_id') ? document.querySelector('select[name="activity_id"] option[value="' + formData.get('activity_id') + '"]')?.textContent || '' : ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>مركز الأنشطة</label>
+                                        <span class="field-value">${formData.get('center_id') ? document.querySelector('select[name="center_id"] option[value="' + formData.get('center_id') + '"]')?.textContent || '' : ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>المدة (بالأيام)</label>
+                                        <span class="field-value">${formData.get('duration') || ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <h6>جهة اتصال طارئة</h6>
+                                <hr/>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label>اسم جهة الاتصال الطارئة</label>
+                                        <span class="field-value">${formData.get('emergency_contact_name') || ''}</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>رقم هاتف جهة الاتصال الطارئة</label>
+                                        <span class="field-value">${formData.get('emergency_contact_phone') || ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <h6>إقرار ولى الأمر</h6>
+                                <hr/>
+                                <div class="declaration-section">
+                                    <p>
+                                        أقر أنا /                                        <span class="field-value">${formData.get('parent_declaration_name') || ''}</span>
+                                    </p>
+                                    <p>
+                                        ولى أمر الطالب، بالتعهد بالالتزام بالإجراءات الاحترازية والانصراف عقب الانتهاء من التدريب مباشرة، وأن ابني لا يعاني من أية مشكلات صحية.
+                                    </p>
+                                    <p>
+                                        توقيع ولى الأمر:                                        <span class="field-value">${formData.get('parent_signature') || ''}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="footer">
+                                <p>تم طباعة هذا النموذج بتاريخ: ${new Date().toLocaleDateString('ar-SA')}</p>
+                            </div>
+                        </body>
+                    </html>
+                                `;
+                                const printWindow = window.open('', '_blank');
+                                printWindow.document.write(htmlContent);
+                                printWindow.document.close();
+                                printWindow.focus();
+                                setTimeout(() => {
+                                    printWindow.print();
+                                    setTimeout(() => {
+                                        printWindow.close();
+                                    }, 1000);
+                                }, 500);
+                            });
+                        }
+                    });
+                </script>
+                <div class="oe_structure">
+                    <div class="container mt-4" id="registration_create_form">
+                        <div class="header-text">
+                            <div>كلية النصر للبنين - فيكتوريا الإسكندرية</div>
+                            <div>الاستمارة: 50 جنيهاً</div>
+                            <div>المركز الرياضى الصيفى المتخصص</div>
+                            <div>استمارة تسجيل الاشتراك في نشاط المركز الرياضى</div>
+                        </div>
+                        <h6>البيانات الشخصية</h6>
+                        <hr/>
+                        <form class="row g-3" role="form" action="/registration/create" method="post" enctype="multipart/form-data">
+                            <div class="col-md-6">
+                                <label for="fname" class="form-label">الاسم الأول</label>
+                                <input required="1" type="text" name="fname" class="form-control" id="fname" placeholder="أدخل الاسم الأول"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="lname" class="form-label">اسم العائلة</label>
+                                <input required="1" type="text" name="lname" class="form-control" id="lname" placeholder="أدخل اسم العائلة"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="birth_date" class="form-label">تاريخ الميلاد</label>
+                                <input required="1" type="date" name="birth_date" class="form-control" id="birth_date"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="gender" class="form-label">الجنس</label>
+                                <select required="1" name="gender" class="form-select" id="gender">
+                                    <option value="" label="اختر"/>
+                                    <option value="male">ذكر</option>
+                                    <option value="female">أنثى</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parent_fullname" class="form-label">اسم ولي الأمر (كامل)</label>
+                                <input required="1" name="parent_fullname" type="text" class="form-control" id="parent_fullname" placeholder="أدخل اسم ولي الأمر"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parent_national_id" class="form-label">الرقم القومي لولي الأمر</label>
+                                <input required="1" name="parent_national_id" type="text" class="form-control" id="parent_national_id" placeholder="أدخل الرقم القومي"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parent_mobile" class="form-label">رقم هاتف ولي الأمر</label>
+                                <input required="1" type="text" name="parent_mobile" class="form-control" id="parent_mobile" placeholder="أدخل رقم الهاتف"/>
+                            </div>
+                            <h6>بيانات التواصل</h6>
+                            <hr/>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">البريد الإلكتروني</label>
+                                <input type="email" name="email" class="form-control" id="email" placeholder="أدخل البريد الإلكتروني"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="mobile" class="form-label">رقم الهاتف</label>
+                                <input type="text" name="mobile" class="form-control" id="mobile" placeholder="أدخل رقم الهاتف"/>
+                            </div>
+                            <div class="col-12">
+                                <label for="address" class="form-label">العنوان</label>
+                                <input type="text" name="address" class="form-control" id="address" placeholder="أدخل العنوان، مثل: 1234، الشارع الرئيسي"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="city" class="form-label">المدينة</label>
+                                <input type="text" name="city" class="form-control" id="city" placeholder="أدخل اسم المدينة"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="state" class="form-label">المحافظة</label>
+                                <select id="state" name="state" class="form-select">
+                                    <option label="اختر المحافظة"/>
+                                    <t t-foreach="states" t-as="state">
+                                        <option t-esc="state.name" t-att-value="state.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="zip" class="form-label">الرمز البريدي</label>
+                                <input type="text" name="zip" class="form-control" id="zip" placeholder="أدخل الرمز البريدي"/>
+                            </div>
+                            <h6>الاحتياجات الخاصة</h6>
+                            <hr/>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="is_disability" class="form-check-input is_disability" type="checkbox" id="is_disability"/>
+                                    <label class="form-check-label" for="is_disability">
+                                        هل هناك أي إعاقة؟
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <textarea placeholder="اكتب وصف الإعاقة إن وجدت..." name="disability_description" class="form-control d-none" id="disability_description"/>
+                            </div>
+                            <h6>الانتماء</h6>
+                            <hr/>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="affiliation" class="form-check-input" type="radio" id="affiliation_college_children" value="college_children"/>
+                                    <label class="form-check-label" for="affiliation_college_children">
+                                        أبناء الكلية
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input name="affiliation" class="form-check-input" type="radio" id="affiliation_national_institutes" value="national_institutes"/>
+                                    <label class="form-check-label" for="affiliation_national_institutes">
+                                        أبناء معاهد قومية
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input name="affiliation" class="form-check-input" type="radio" id="affiliation_college_workers" value="college_workers"/>
+                                    <label class="form-check-label" for="affiliation_college_workers">
+                                        أبناء عاملي الكلية
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input name="affiliation" class="form-check-input" type="radio" id="affiliation_outside_college" value="outside_college"/>
+                                    <label class="form-check-label" for="affiliation_outside_college">
+                                        خارج الكلية
+                                    </label>
+                                </div>
+                            </div>
+                            <h6>تفاصيل الأنشطة</h6>
+                            <hr/>
+                            <div class="col-md-4">
+
+                                <label for="activity_id" class="form-label">اسم النشاط</label>
+                                <div id="activity-checkbox-group">
+                                    <div class="row">
+                                        <t t-foreach="activities_by_category.items()" t-as="cat">
+                                            <div class="col-12 mb-3">
+                                                <strong>
+                                                    <t t-esc="cat[0]"/>
+                                                </strong>
+                                                <div class="row">
+                                                    <t t-foreach="cat[1]" t-as="activity">
+                                                        <div class="col-md-4">
+                                                            <div class="form-check">
+                                                                <input type="checkbox" t-att-id="'activity_' + str(activity.id)" t-att-name="'activity_ids[]'" t-att-value="activity.id" class="form-check-input"/>
+                                                                <label class="form-check-label" t-att-for="'activity_' + str(activity.id)">
+                                                                    <t t-esc="activity.display_name"/>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <!-- <div class="col-md-4">
+                                <label for="center_id" class="form-label">مركز الأنشطة</label>
+                                <select required="1" id="center_id" name="center_id" class="form-select">
+                                    <option label="اختر المركز"/>
+                                    <t t-foreach="centers" t-as="center">
+                                        <option t-esc="center.display_name" t-att-value="center.id"/>
+                                    </t>
+                                </select>
+                            </div> -->
+                            <!-- <div class="col-md-4">
+                                <label for="duration" class="form-label">المدة (بالأيام)</label>
+                                <input type="text" required="1" name="duration" class="form-control" id="duration" placeholder="أدخل عدد الأيام"/>
+                            </div> -->
+                            <h6>جهة اتصال طارئة</h6>
+                            <hr/>
+                            <div class="col-md-6">
+                                <label for="emergency_contact_name" class="form-label">اسم جهة الاتصال الطارئة</label>
+                                <input type="text" name="emergency_contact_name" class="form-control" id="emergency_contact_name" placeholder="أدخل الاسم الكامل"/>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="emergency_contact_phone" class="form-label">رقم هاتف جهة الاتصال الطارئة</label>
+                                <input type="text" name="emergency_contact_phone" class="form-control" id="emergency_contact_phone" placeholder="أدخل رقم الهاتف"/>
+                            </div>
+                            <h6>إقرار ولى الأمر</h6>
+                            <hr/>
+                            <div class="col-12">
+                                <p>
+                                    أقر أنا /                                    <input type="text" name="parent_declaration_name" class="declaration-input" placeholder="اسم ولى الأمر" required="1"/>
+                                </p>
+                                <p>
+                                    ولى أمر الطالب، بالتعهد بالالتزام بالإجراءات الاحترازية والانصراف عقب الانتهاء من التدريب مباشرة، وأن ابني لا يعاني من أية مشكلات صحية.
+                                </p>
+                                <p>
+                                    توقيع ولى الأمر:                                    <input type="text" name="parent_signature" class="declaration-input" placeholder="التوقيع" required="1"/>
+                                </p>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="check_data" class="form-check-input" type="checkbox" id="check_data" required="1"/>
+                                    <label class="form-check-label" for="check_data">
+                                        أوافق على شروط وأحكام التسجيل
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 mb-4">
+                                <button type="button" id="print_registration" class="btn btn-secondary pull-left">طباعة</button>
+                                <button type="submit" id="submit_registration" class="btn btn-primary pull-left">تسجيل الآن</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="oe_structure mt-2"/>
+        </t>
+    </template>
+
+    <template id="booking" name="Student - Ground Booking">
+        <t t-call="website.layout">
+            <div id="wrap">
+                <div class="oe_structure">
+                    <div class="container mt-4" id="booking_create_form">
+                        <h4 class="mx-4 text-center">Fill details &amp; Find slot</h4>
+                        <hr/>
+                        <form class="row g-3 mt-4" role="form" method="post" id="book_check_record" enctype="multipart/form-data">
+                            <div class="col-md-4">
+                                <label for="start_time" class="form-label">Start Time</label>
+                                <input id="datetimepicker_start_date" required="1" name="start_date" type="text" class="form-control" placeholder="yyyy-mm-dd hh:mm"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="end_time" class="form-label">End Time</label>
+                                <input id="datetimepicker_end_date" required="1" name="end_date" type="text" class="form-control" placeholder="yyyy-mm-dd hh:mm"/>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="ground" class="form-label">Select Ground</label>
+                                <select required="1" id="ground_id" name="ground_id" class="form-select">
+                                    <option value="" label="Select Ground">Select Ground</option>
+                                    <t t-foreach="grounds" t-as="ground">
+                                        <option t-esc="ground.name" t-att-value="ground.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="sport" class="form-label">Select Sport</label>
+                                <select required="1" id="sportname_id" name="sportname_id" class="form-select">
+                                    <option value="" label="Select Sport">Select Sport</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 mb-4">
+                                <button type="button" id="submit_booking_check" class="btn btn-outline-secondary btn-lg submit_booking_check">Check Availability</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="oe_structure mt-2"/>
+        </t>
+        <div class="modal" id="check_validate_model" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Fill details for book slot!</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="popup_form_confirm_booking">
+                        <form role="form" action="/book_ground/confirm" method="post" enctype="multipart/form-data">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="start_time" class="form-label">Start Time</label>
+                                    <input required="1" type="text" name="model_start_date" class="form-control mb-2" id="model_start_date" placeholder="yyyy-mm-dd hh:mm" autocomplete = "off"/>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="end_time" class="form-label">End Time</label>
+                                    <input required="1" type="text" name="model_end_date" class="form-control mb-2" id="model_end_date" placeholder="yyyy-mm-dd'antique" autocomplete= "off"/>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="ground" class="form-label">Select Ground</label>
+                                    <select required="1" placeholder="Select Ground" id="model_ground_id" name="model_ground_id" class="form-select mb-2">
+                                        <option label="Select Ground"/>
+                                        <t t-foreach="grounds" t-as="ground">
+                                            <option t-esc="ground.name" t-att-value="ground.id"/>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="sport" class="form-label">Select Sport</label>
+                                    <select required="1" placeholder="Select Sport" id="model_sportname_id" name="model_sportname_id" class="form-select mb-2">
+                                        <option label="Select Sport"/>
+                                        <t t-foreach="sports" t-as="sport">
+                                            <option t-esc="sport.name" t-att-value="sport.id"/>
+                                        </t>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label for="model_user_name" class="form-label">User</label>
+                                    <input required="1" type="text" name="model_user_name" class="form-control mb-2" id="model_user_name"/>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label for="model_user_email" class="form-label">Email</label>
+                                    <input required="1" type="email" name="model_user_email" class="form-control mb-2" id="model_user_email"/>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label for="model_user_mobile" class="form-label">Mobile</label>
+                                    <input required="1" type="text" name="model_user_mobile" class="form-control mb-2" id="model_user_mobile"/>
+                                </div>
+                                <div class="col-md-12">
+                                    <input required="1" type="hidden" name="model_user_id" class="form-control mb-2" id="model_user_id"/>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-light" id="closeBtn" data-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary" id="confirmGroundBooking" data-dismiss="modal">Confirm Booking</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="inquiry" name="Student - Inquiry">
+        <t t-call="website.layout">
+            <div id="wrap">
+                <div class="oe_structure">
+                    <div class="container mt-4" id="inquiry_create">
+                        <h4 class="mx-4 text-center">Fill the below Details</h4>
+                        <hr/>
+                        <form class="row g-3 mt-4" role="form" action="/inquiry/create" method="post" enctype="multipart/form-data">
+                            <div class="col-md-6">
+                                <input required="1" placeholder="First Name" type="text" name="fname" class="form-control" id="fname"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" type="text" placeholder="Last Name" name="lname" class="form-control" id="lname"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" placeholder="Email" type="email" name="email" class="form-control" id="email"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" placeholder="Mobile" type="text" name="mobile" class="form-control" id="mobile"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input required="1" name="parent_fullname" type="text" class="form-control" id="parent_fullname" placeholder="Parents Name(Full)"/>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" name="parent_mobile" class="form-control" id="parent_mobile" placeholder="Parent Mobile"/>
+                            </div>
+                            <div class="col-md-4">
+                                <select required="1" placeholder="Sports Name" id="sport_id" name="sport_id" class="form-select">
+                                    <option label="Sports Name"/>
+                                    <t t-foreach="studies" t-as="level">
+                                        <option t-esc="level.display_name" t-att-value="level.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <select required="1" id="level_id" name="level_id" class="form-select">
+                                    <option label="Sports Center"/>
+                                    <t t-foreach="centers" t-as="center">
+                                        <option t-esc="center.display_name" t-att-value="center.id"/>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" placeholder="Duration in Days" required="1" name="duration" class="form-control" id="duration"/>
+                            </div>
+                            <div class="col-md-12">
+                                <textarea placeholder="Write Your Query Here...." required="1" name="query" class="form-control" id="query"/>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input name="check_data" required="1" class="form-check-input" type="checkbox" id="check_data"/>
+                                    <label class="form-check-label" for="gridCheck">
+                                        Check me out
+                                    </label>
+                                </div>
+                            </div>
+                            <hr/>
+                            <div class="col-12 mb-4">
+                                <button type="submit" id="submit_inquiry" class="btn btn-primary pull-left">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <template id="index_event" inherit_id="website_event.index">
+        <xpath expr='//t[@t-call="website.layout"]' position="replace">
+            <t t-call="website.layout">
+                <div id="wrap">
+                    <div class="oe_structure">
+                        <div t-if="not request.env.user._is_public()" id="wrap" class="o_wevent_index">
+                            <!-- Options -->
+                            <t t-set="opt_events_list_cards" t-value="is_view_active('website_event.opt_events_list_cards')"/>
+                            <t t-set="opt_events_list_columns" t-value="is_view_active('website_event.opt_events_list_columns')"/>
+                            <!-- Topbar -->
+                            <t t-call="website_event.index_topbar">
+                                <t t-set="search" t-value="original_search or search or searches['search']"/>
+                            </t>
+                            <!-- Drag/Drop Area -->
+                            <div id="oe_structure_we_index_1" class="oe_structure oe_empty"/>
+                            <!-- Content -->
+                            <div class="o_wevent_events_list">
+                                <div class="container">
+                                    <div class="d-flex mx-n3">
+                                        <t t-call="website_event.searched_tags"/>
+                                    </div>
+                                    <div class="row">
+                                        <div id="o_wevent_index_main_col" t-attf-class="col-md my-5 #{opt_events_list_columns and 'opt_events_list_columns' or 'opt_events_list_rows'}">
+                                            <div class="row">
+                                                <!-- Events List -->
+                                                <t t-call="website_event.events_list"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Drag/Drop Area -->
+                            <div id="oe_structure_we_index_2" class="oe_structure oe_empty"/>
+                        </div>
+                        <div t-if="request.env.user._is_public()" class="container mt-4" id="registration_create">
+                            <div class="alert alert-warning" role="alert">
+                                <h4 class="alert-heading">Not login!</h4>
+                                <p>
+                                    <t t-esc="massage"/>
+You need to login first!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_home_event" name="Show Events" customize_show="True" inherit_id="portal.portal_my_home">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Event Tickets</t>
+                <t t-set="url" t-value="'/my/events'"/>
+                <t t-set="placeholder_count" t-value="'event_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_home_menu_event" name="Portal layout : Event Tickets" inherit_id="portal.portal_breadcrumbs" priority="14">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'events' " t-attf-class="breadcrumb-item #{'active ' if not events else ''}">
+                <a t-if="event" t-attf-href="/my/events?{{ keep_query() }}">
+                    My Event Tickets
+                </a>
+                <t t-else="">
+                    My Event Tickets
+                </t>
+            </li>
+            <li t-if="event" class="breadcrumb-item active">
+                <span t-field="event.event_id.name"/>
+            </li>
+        </xpath>
+    </template>
+
+    <template id="portal_my_events" name="My Events">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Events</t>
+            </t>
+            <div t-if="not grouped_events" class="alert alert-warning mt8" role="alert">
+                There are no events.
+            </div>
+            <t t-if="grouped_events" t-call="portal.portal_table">
+                <t t-foreach="grouped_events" t-as="events">
+                    <thead>
+                        <tr>
+                            <th t-if="groupby == 'none'" width="600">Event Name</th>
+                            <t t-else="">
+                                <t t-if="groupby == 'event'">
+                                    <th>
+                                        <em class="font-weight-normal text-muted">Events:</em>
+                                        <span t-field="events[0].event_id.name"/>
+                                    </th>
+                                </t>
+                            </t>
+                            <th>Attendee</th>
+                            <th>Registration Date</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Download Ticket</th>
+                        </tr>
+                    </thead>
+                    <t t-foreach="events" t-as="event">
+                        <tr>
+                            <td>
+                                <a t-attf-href="/my/event/#{event.id}">
+                                    <span t-field="event.event_id.name"/>
+                                </a>
+                            </td>
+                            <td>
+                                <span t-field="event.name"/>
+                            </td>
+                            <td>
+                                <span t-field="event.create_date"/>
+                            </td>
+                            <td>
+                                <span t-field="event.email"/>
+                            </td>
+                            <td>
+                                <span t-field="event.phone"/>
+                            </td>
+                            <td>
+                                <a role="button" type="submit" t-attf-href="/event/ticket/report/#{event.id}" class="btn btn-secondary btn-block o_print_btn" title="print" target="_blank">
+                                    <i class="fa fa-print"/>
+ Download</a>
+                            </td>
+                        </tr>
+                    </t>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="event_followup" name="Event Portal Template" inherit_id="portal.portal_sidebar" primary="True">
+        <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
+            <div class="row mt16 o_portal_sale_sidebar">
+                <!-- Sidebar -->
+
+                <t t-call="portal.portal_record_sidebar">
+                    <t t-set="classes" t-value="'col-lg-auto d-print-none'"/>
+
+                    <t t-set="entries">
+                        <ul class="list-group list-group-flush flex-wrap flex-row flex-lg-column">
+                            <li class="list-group-item d-grid align-content-start">
+                                <div class="o_download_pdf btn-toolbar flex-sm-nowrap">
+                                    <div class="btn-group flex-grow-1 me-1 mb-1">
+                                        <a class="btn btn-secondary o_download_btn" t-attf-href="/event/ticket/report/#{event.id}" title="Download">
+                                            <i class="fa fa-download"/>
+ Download Ticket</a>
+                                    </div>
+                                </div>
+                            </li>
+
+                            <li t-if="event.event_id.user_id" class="list-group-item flex-grow-1">
+                                <div class="small mb-1">
+                                    <strong class="text-muted">Salesperson</strong>
+                                </div>
+                                <div class="row flex-nowrap">
+                                    <div class="col flex-grow-0 pe-2">
+                                        <img class="rounded-circle mr4 float-start o_portal_contact_img" t-att-src="image_data_uri(event.event_id.user_id.avatar_1024)" alt="Contact"/>
+                                    </div>
+                                    <div class="col ps-0" style="min-width: 150px">
+                                        <span t-field="event.event_id.user_id" t-options='{"widget": "contact", "fields": ["name", "phone"], "no_marker": True}'/>
+                                        <a href="#discussion" class="small">
+                                            <i class="fa fa-comment"></i> Send message
+                                        </a>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </t>
+                </t>
+
+                <div id="quote_content" class="col-12 col-lg justify-content-end">
+                    <div class="card" id="portal_event_content">
+                        <div t-call="bi_sport_center_management.event_portal_content"/>
+                    </div>
+
+                    <div id="event_communication" class="mt-4">
+                        <h2>History</h2>
+                        <t t-call="portal.message_thread">
+                            <t t-set="object" t-value="event"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="event_portal_content" name="Event Portal Content">
+        <!-- Intro -->
+        <div id="introduction" class="row pb-2 pt-3 card-header bg-white">
+            <h2 class="col-md-8 my-0">
+                <em t-esc="event.state"/>
+            </h2>
+        </div>
+
+        <div class="card-body">
+            <!-- Informations -->
+            <div id="informations">
+                <div class="row" id="tr_date_contact">
+                    <div class="mb-3 col-6" t-if="event.event_id.user_id.partner_id">
+                        <strong>Contact:</strong>
+                        <span t-field="event.event_id.user_id.partner_id.name" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.street" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.city" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.state_id" />
+                        <span t-field="event.event_id.user_id.partner_id.zip" />
+                        <br/>
+                        <span t-field="event.event_id.user_id.partner_id.country_id" />
+                        <br/>
+                    </div>
+                    <div class="mb-3 col-6">
+                        <t t-if="event.create_date">
+                            <strong>Registration Date:</strong>
+                            <span t-field="event.create_date"/>
+                        </t>
+                    </div>
+                </div>
+                <div class="row" id="tr_date_event">
+                    <div class="mb-3 col-6" t-if="event.event_id.name">
+                        <strong>Event:</strong>
+                        <span t-field="event.event_id.name"/>
+                    </div>
+                    <div class="mb-3 col-6">
+                        <t t-if="event.create_date">
+                            <strong>Attendee Name:</strong>
+                            <span t-field="event.name"/>
+                        </t>
+                    </div>
+                </div>
+                <div class="row" id="tr_date_phone">
+                    <div class="mb-3 col-6">
+                        <t t-if="event.phone">
+                            <strong>Phone:</strong>
+                            <span t-field="event.phone"/>
+                        </t>
+                    </div>
+                    <div class="mb-3 col-6" t-if="event.email">
+                        <strong>Email:</strong>
+                        <span t-field="event.email"/>
+                    </div>
+                </div>
+                <div class="row" id="tr_date_attend">
+                    <div class="mb-3 col-6">
+                        <t t-if="event.date_closed">
+                            <strong>Attended Date:</strong>
+                            <span t-field="event.date_closed"/>
+                        </t>
+                    </div>
+                    <div class="mb-3 col-6">
+                        <t t-if="event.event_ticket_id">
+                            <strong>Event Ticket : </strong>
+                            <span t-field="event.event_ticket_id"/>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</odoo>

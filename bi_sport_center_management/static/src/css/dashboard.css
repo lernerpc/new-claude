@@ -1,0 +1,152 @@
+/* .o_action_manager {
+    overflow: auto !important;
+} */
+
+.oh_dashboards {
+    padding-top: 15px;
+    background-color: #f8faff !important;
+}
+
+
+/* .oh-card h4 {
+    font-size: 1.1rem;
+} */
+
+/* .breadcrumbs {
+    margin-top: 0;
+} */
+
+/* .buttons button {
+    margin: 2px 0;
+} */
+
+
+/* Button Reset */
+
+.btn,
+.button {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    /* transition: all .15s ease-in-out; */
+    border-radius: 0;
+    cursor: pointer;
+}
+
+
+/*    Widget One
+---------------------------*/
+
+.stat-content {
+    display: inline-block;
+    width: 66%;
+}
+
+.stat-icon {
+    display: inline-block;
+}
+
+.stat-widget-one .stat-icon {
+    vertical-align: top;
+    margin: auto;
+    width: 100%;
+    color: #01c490;
+}
+
+.stat-widget-one .stat-icon i {
+    font-size: 30px;
+    font-weight: 900;
+    display: inline-block;
+    color: #01c490;
+}
+
+
+/*=====================New Dashboard===========================*/
+
+.oh_dashboards {
+    background-color: #f8faff !important;
+    padding: 0px !important;
+}
+
+.container-fluid.o_hr_dashboard {
+    padding: 0px !important;
+}
+
+.oh-card {
+    padding-top: 0px;
+    padding: 0px;
+    margin-bottom: 1.5rem;
+    border-radius: 0px;
+    box-shadow: none;
+    background: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform, box-shadow;
+}
+
+.oh-card:hover {
+    transform: translateY(-2px) translateZ(0) !important;
+    box-shadow: 0 10px 10px 0 rgba(62, 57, 107, 0.12), 0 0 0 transparent !important;
+}
+
+.oh-payslip {
+    margin-top: 1.5%;
+}
+
+.oh-payslip .stat-icon {
+    width: 30%;
+    height: 100px;
+    text-align: center;
+    padding-top: 15%;
+    background: #CC87C3;
+    color: #fff;
+}
+
+.oh-payslip .oh-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: transform, box-shadow;
+    box-shadow: 0 10px 40px 0 rgba(62, 57, 107, 0.07), 0 2px 9px 0 rgba(62, 57, 107, 0.06);
+}
+
+.stat-widget-one .stat-icon i {
+    font-size: 25px;
+    font-weight: 900;
+    display: inline-block;
+    color: #fff;
+}
+
+.stat-widget-one {
+    background-color: white;
+    text-align: inherit !important;
+}
+
+.stat-widget-one {
+    width: 100%;
+}
+
+.oh-payslip .stat-icon {
+    width: 30%;
+    height: 100px;
+    text-align: center;
+    padding-top: 15%;
+}
+
+.stat-head {
+    text-align: left !important;
+    font-weight: 300;
+    font-size: 15px;
+    margin-bottom: 25px;
+    margin-left: 24px;
+    width: 100%;
+}
+
+.oh-card-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.text-align {
+    margin-left: 17px;
+}

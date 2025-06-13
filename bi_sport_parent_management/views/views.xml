@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Root menu for the module -->
+    <menuitem
+        id="menu_sport_root"
+        name="Sports Management"
+        sequence="10"/>
+
+    <!-- Client action for the dashboard -->
+    <record id="action_sport_dashboard" model="ir.actions.client">
+        <field name="name">Sports Dashboard</field>
+        <field name="tag">bi_sport_parent_management.dashboard</field>
+    </record>
+
+    <!-- Client action for the parent dashboard -->
+    <record id="action_parent_dashboard" model="ir.actions.client">
+        <field name="name">Parent Dashboard</field>
+        <field name="tag">bi_sport_parent_management.dashboard_action</field>
+    </record>
+
+    <!-- Menu item linking to the dashboard -->
+    <menuitem
+        id="menu_sport_dashboard"
+        name="Dashboard"
+        action="action_sport_dashboard"
+        parent="menu_sport_root"
+        sequence="10"/>
+
+    <!-- Menu item linking to the parent dashboard -->
+    <menuitem
+        id="menu_parent_dashboard"
+        name="Parent Dashboard"
+        action="action_parent_dashboard"
+        parent="bi_sport_center_management.student_admission_main_menu"
+        sequence="25"/>
+</odoo>

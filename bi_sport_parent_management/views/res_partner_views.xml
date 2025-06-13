@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Server Action for Printing Parent IDs -->
+    <record id="action_parent_id_print_wizard_server" model="ir.actions.server">
+        <field name="name">عرض وطباعة بطاقات العضوية</field>
+        <field name="model_id" ref="bi_sport_center_management.model_res_partner"/>
+        <field name="binding_model_id" ref="bi_sport_center_management.model_res_partner"/>
+        <field name="state">code</field>
+        <field name="binding_type">action</field>
+        <field name="code">
+    action = {
+        'type': 'ir.actions.act_window',
+        'name': 'عرض وطباعة بطاقات العضوية',
+        'res_model': 'parent.id.print.wizard',
+        'view_mode': 'form',
+        'target': 'new',
+    }
+        </field>
+    </record>
+
+    <!-- Tree View Patch -->
+    <record id="res_partner_tree_patch_tags" model="ir.ui.view">
+        <field name="name">res.partner.tree.patch.tags</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree" position="attributes">
+                <attribute name="limit">20</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="printed"/>
+                <field name="first_print_date"/>
+                <field name="last_print_date"/>
+                <field name="is_guardian"/>
+                <field name="is_parking"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Form View Patch -->
+    <record id="view_res_partner_form_sport_parent" model="ir.ui.view">
+        <field name="name">res.partner.form.sport.parent</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="bi_sport_center_management.view_res_partner_form_sport"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <field name="is_parent" invisible="true"/>
+                <field name="is_student" invisible="true"/>
+            </xpath>
+            <xpath expr="//sheet" position="inside">
+                <div class="oe_title" invisible="is_parent == False">
+                    <h1>
+                        <field name="name" placeholder="Name"/>
+                    </h1>
+                    <div class="o_row">
+                        <field name="parent_image_1920" widget="image" class="oe_avatar"/>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//sheet/group/group[1]" position="inside">
+                <field name="membership_number" required="true" invisible="is_parent == False"/>
+            </xpath>
+            <xpath expr="//page[@name='sport_center']" position="replace">
+                <page name="parent_info" string="Parent Information" invisible="is_parent == False">
+                    <group>
+                        <group string="Parent Details">
+                            <field name="is_guardian"/>
+                            <field name="is_parking"/>
+                            <!-- <field name="membership_number"/> -->
+                            <field name="printed"/>
+                            <field name="first_print_date"/>
+                            <field name="last_print_date"/>
+                            <!-- <field name="tag_ids" widget="many2many_tags"/> -->
+                        </group>
+                    </group>
+                </page>
+                <page name="children" string="Children" invisible="is_parent == False">
+                    <group>
+                        <field name="child_ids" widget="one2many_list">
+                            <tree>
+                                <field name="name"/>
+                                <field name="sport_id" widget="many2many_tags"/>
+                            </tree>
+                        </field>
+                    </group>
+                </page>
+                <page name="sport_center" string="Sport Center" invisible="is_parent == True">
+                    <group>
+                        <group name="sport" string="Sport Details">
+                            <field name="is_student"/>
+                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" string="Current Trainer" invisible="is_student == False"/>
+                            <field name="is_coach"/>
+                            <field name="sport_id" widget="many2many_tags"/>
+                            <field name="is_guardian" invisible="is_student == False"/>
+                            <field name="is_parking" invisible="is_student == False"/>
+                        </group>
+                        <group name="disability" string="Disability">
+                            <field name="is_disability"/>
+                            <field name="disability_description" invisible="is_disability == False"/>
+                            <field name="is_sport" readonly="true"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Menu Item for Printing Parent IDs -->
+    <!-- <menuitem id="menu_parent_id_print" name="Print Parent ID Cards" action="action_parent_id_print_wizard_server" parent="contacts.menu_contacts" sequence="10"/> -->
+</odoo>

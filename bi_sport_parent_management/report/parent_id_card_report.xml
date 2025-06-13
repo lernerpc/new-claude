@@ -1,0 +1,389 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Shared CSS for front and back -->
+    <template id="report_parent_id_card_common_css">
+        <t t-set="bootstrap_css">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"/>
+        </t>
+        <style>
+            @page{
+                size: 20cm 30cm;
+            }
+            body {
+                direction: rtl !important;
+                font-family: 'Arial', sans-serif !important;
+                margin: 0;
+                padding: 0;
+                background: #f5f5f5;
+                font-size: 12px;
+                color: #0B1E52;
+            }
+
+            .cards-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(85.6mm, max-content));
+                justify-content: center;
+                align-content: start;
+                gap: 4mm 10mm;
+                width: 100%;
+                max-width: 200mm;
+                margin: 0;
+                padding: 0;
+                page-break-inside: avoid;
+            }
+
+            .id-card {
+                width: 86mm;
+                height: 54mm;
+                position: relative;
+                background-image: url('/bi_sport_parent_management/static/src/img/front_new.jpg');
+                background-size: cover;          
+                background-repeat: no-repeat;   
+                background-position: center;
+                color: #0B1E52;
+                font-weight: 400;    
+                border-radius: 5px;
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+                overflow: hidden;     
+            }
+
+            .id-photo {
+                /* Commented out original styles */
+            }
+
+            .qr-code {
+                /* Static placeholder styles */
+                width: 16mm;
+                height: 16mm;
+                background: #fff;
+                border: 1px solid #ddd;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 8px;
+                color: #666;
+                border-radius: 3px;
+            }
+
+            .student-photo {
+                border-radius: 0;
+                width: 16mm;
+                height: 22.5mm;
+                background: #ddd;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                color: #666;
+            }
+
+            .transparent-bg {
+                background-color: rgba(255, 255, 255, 0.1);
+                margin-inline: 2px;
+                padding-top: 2px;
+            }
+
+            /* Enhanced inline styles */
+            .info-item {
+                display: flex;
+                align-items: baseline;
+                margin-bottom: 2mm;
+                flex-wrap: wrap;
+                gap: 2mm;
+            }
+
+            .info-label {
+                font-weight: bold;
+                color: #0B1E52;
+                white-space: nowrap;
+                min-width: fit-content;
+            }
+
+            .info-value {
+                color: #333;
+                flex: 1;
+            }
+
+            .children-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1mm;
+                align-items: center;
+                flex: 1;
+            }
+
+            .child-widget {
+                background: linear-gradient(135deg, rgba(11, 30, 82, 0.1), rgba(11, 30, 82, 0.05));
+                border: 1px solid rgba(11, 30, 82, 0.2);
+                border-radius: 3mm;
+                padding: 1mm 2mm;
+                font-size: 2.1mm;
+                color: #0B1E52;
+                display: inline-flex;
+                align-items: center;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                transition: all 0.2s ease;
+                white-space: nowrap;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                margin-left: 1mm;
+            }
+
+            .child-widget:hover {
+                background: linear-gradient(135deg, rgba(11, 30, 82, 0.15), rgba(11, 30, 82, 0.08));
+                transform: translateY(-0.5px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            }
+
+            .children-more {
+                background: linear-gradient(135deg, rgba(100, 100, 100, 0.1), rgba(150, 150, 150, 0.05));
+                border: 1px dashed rgba(100, 100, 100, 0.3);
+                border-radius: 2mm;
+                padding: 0.8mm 1.5mm;
+                font-size: 2.1mm;
+                color: #666;
+                font-style: italic;
+                display: inline-flex;
+                align-items: center;
+            }
+
+            @media print {
+                body {
+                    background: white !important;
+                    padding: 0;
+                }
+
+                .id-card {
+                    page-break-inside: avoid;
+                }
+            }
+
+            .id-card-back {
+                width: 86mm;
+                height: 54mm;
+                position: relative;
+                background-image: url('/bi_sport_parent_management/static/src/img/back_new.jpg');
+                background-size: cover;
+                background-position: center;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+                color: #ffffff;
+            }
+
+            .id-card-back-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.1);
+                z-index: 0;
+            }
+
+            .id-card-back-content {
+                position: relative;
+                z-index: 1;
+                padding: 10px;
+            }
+
+            .id-card-back-content h3 {
+                color: #ffffff;
+                text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+                margin-bottom: 0.75rem;
+            }
+
+            .id-card-back-content ul {
+                list-style-type: square;
+                padding-right: 0;
+                color: #f8f9fa;
+                line-height: 1.4;
+            }
+
+            .id-card-back-content li {
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+                margin-bottom: 4px;
+            }
+
+            .page-break {
+                display: none;
+            }
+            
+            @media print {
+                html, body {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                }
+                .id-card {
+                    box-shadow: none;
+                    transform: rotateY(180deg);
+                }
+                .id-card-back{
+                    transform: rotateY(180deg);
+                }
+                .page-break {
+                    display: block;
+                    page-break-before: always;
+                }
+            }
+        </style>
+    </template>
+
+    <template id="report_parent_id_card_front_only">
+        <t t-call="web.html_container">
+            <t t-call="bi_sport_parent_management.report_parent_id_card_common_css"/>
+            <div class="cards-grid front-page container">
+
+                <t t-foreach="docs" t-as="student">
+                    <div class="id-card p-2 mt-2">
+                        <div class="row" style="position: absolute; top: 20mm; width: 100%; margin: 0; display: flex; align-items: stretch;">
+
+                            <!-- First Column: Info Section -->
+                            <div class="col-7" style="padding: 2mm 4mm; height: 29mm; font-size: 2.8mm; line-height: 1.3; display: flex; flex-direction: column; justify-content: flex-start;">
+
+                                <!-- Parent Name - Inline -->
+                                <div class="info-item">
+                                    <span class="info-label">اسم ولي الأمر:</span>
+                                    <span class="info-value">
+                                        <t t-esc="student.name"/>
+                                    </span>
+                                </div>
+
+                                <!-- Children Section - Enhanced with widgets -->
+                                <div class="info-item">
+                                    <span class="info-label">الأبناء:</span>
+                                    <div class="children-container">
+                                        <!-- Show all children as widgets, but limit display for space -->
+                                        <t t-set="display_limit" t-value="4"/>
+                                        <t t-set="child_counter" t-value="0"/>
+
+                                        <t t-foreach="student.child_ids" t-as="child">
+                                            <t t-if="child_counter &lt; display_limit">
+                                                <div class="child-widget">
+                                                    <t t-set="first_two_words" t-value="' '.join(child.name.split()[:2]) if child.name else ''"/>
+                                                    <span t-esc="first_two_words"/>
+                                                </div>
+                                                <t t-set="child_counter" t-value="child_counter + 1"/>
+                                            </t>
+                                        </t>
+
+                                        <!-- Show "+X more" if there are additional children -->
+                                        <t t-if="len(student.child_ids) &gt; display_limit">
+                                            <div class="children-more">
+                                                +                                                <t t-esc="len(student.child_ids) - display_limit"/>
+ أخرى
+                                            </div>
+                                        </t>
+
+                                        <!-- Handle case with no children -->
+                                        <t t-if="not student.child_ids">
+                                            <span style="color: #999; font-style: italic; font-size: 2.5mm;">لا يوجد أطفال</span>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <!-- Year Section -->
+                                <!-- <div class="info-item">
+                                    <span class="info-label">السنة:</span>
+                                    <span class="info-value">
+                                    2024/2025
+                                    </span>
+                                </div> -->
+
+                                <!-- Additional info can be added here in the same inline pattern -->
+                                <!-- Example: Phone number -->
+
+                            </div>
+
+                            <!-- Second Column: Parking Logo -->
+                            <div class="col-1" style="padding: 2mm; height: 29mm; display: flex; align-items: center; justify-content: center;">
+                                <t t-if="student.is_parking">
+                                    <div style="background: rgba(0,123,186,0.9); padding: 2mm; border-radius: 50%; width: 12mm; height: 12mm; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                                        <i class="fa fa-car" style="font-size: 3mm; color: white;"></i>
+                                    </div>
+                                </t>
+                            </div>
+
+                            <!-- Third Column: QR Code -->
+                            <div class="col-3" style="padding: 2mm; height: 29mm; position: relative;">
+                                <!-- QR Code (positioned absolutely) -->
+                                <div style="position: absolute; bottom: 4.5mm; left: 40%; transform: translateX(-40%); text-align: center;">
+                                    <img class="qr-code" t-if="student.qr_code" t-att-src="image_data_uri(student.qr_code)" alt="QR Code" style="height: 16mm; width: 16mm; object-fit: contain;" />
+                                    <!-- Academic year label below the QR code -->
+                                    <div style="width: 16mm; font-size: 6pt; font-weight: 600; color: #333; margin-top: 1mm; text-align: center;">
+            2024/2025
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+                </t>
+
+            </div>
+        </t>
+    </template>
+
+    <template id="report_parent_id_card_back_only">
+        <t t-call="web.html_container">
+            <t t-call="bi_sport_parent_management.report_parent_id_card_common_css"/>
+            <div class="cards-grid back-page">
+
+                <t t-foreach="docs" t-as="student">
+                    <div class="id-card-back mt-2">
+                        <!-- <div class="id-card-back-overlay"></div>
+                        <div class="id-card-back-content text-right">
+                            <h3 class="text-right">تعليمات المركز</h3>
+                            <ul class="text-right col-6 p-2" style="font-size:11px;">
+                                <li>المتعلقات الشخصية مسئولية ولي الأمر.</li>
+                                <li>مرافق واحد مع اللاعب.</li>
+                                <li>غياب التدريب ليس له تعويض.</li>
+                                <li>لا يوجد استرداد للمبلغ لأي لعبة.</li>
+                                <li>الالتزام بتعليمات الأمن.</li>
+                                <li>دخول الكلية بكارنيه اللاعب.</li>
+                            </ul>
+                        </div> -->
+                    </div>
+                </t>
+
+            </div>
+        </t>
+    </template>
+
+    <template id="report_parent_id_card">
+        <t t-call="web.html_container">
+            <div class="page-front">
+                <t t-call="bi_sport_parent_management.report_parent_id_card_front_only"/>
+            </div>
+            <div class="page-break"></div>
+            <div class="page-back">
+                <t t-call="bi_sport_parent_management.report_parent_id_card_back_only"/>
+            </div>
+        </t>
+        <script type="text/javascript">
+            (function() {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('auto_print') === '1') {
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                            setTimeout(function() { window.close(); }, 1000);
+                        }, 500);
+                    };
+                }
+            })();
+        </script>
+    </template>
+
+    <record id="parent_id_card_report" model="ir.actions.report">
+        <field name="name">Parent ID Card</field>
+        <field name="model">res.partner</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">bi_sport_parent_management.report_parent_id_card</field>
+        <field name="report_file">bi_sport_parent_management.report_parent_id_card</field>
+        <field name="print_report_name">'Parent ID Card - %s' % (object.name)</field>
+    </record>
+</odoo>

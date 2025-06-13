@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_student_id_print_wizard_form" model="ir.ui.view">
+        <field name="name">student.id.print.wizard.form</field>
+        <field name="model">student.id.print.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Print Student IDs">
+                <sheet>
+                    <group>
+                        <field name="filter_printed"/>
+                    </group>
+                    <div class="oe_title">
+                        <field name="student_ids" nolabel="1" class="oe_inline">
+                            <tree editable="bottom" create="false" delete="false" style="width: 100%;">
+                                <field name="name" string="Student Name" style="width: 40%;"/>
+                                <field name="p_name" string="Parent Name" style="width: 40%;"/>
+                                <field name="printed" string="Printed" style="width: 20%;" readonly="1"/>
+                            </tree>
+                        </field>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_print_ids" type="object" string="Print" class="btn-primary"/>
+                    <!-- <button name="action_preview_ids" type="object" string="Preview" class="btn-secondary"/> -->
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
