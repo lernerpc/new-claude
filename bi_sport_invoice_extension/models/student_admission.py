@@ -1,5 +1,5 @@
 import logging
-from odoo import models, api, fields, _ 
+from odoo import models, api, fields, _
 from odoo.exceptions import ValidationError
 from datetime import date
 
@@ -8,15 +8,63 @@ _logger = logging.getLogger(__name__)
 class StudentAdmission(models.Model):
     _inherit = 'student.admission'
 
-    # Use proper One2many with inverse field - this is FAST for 1000+ students
-    invoice_ids = fields.One2many('account.move', 'student_admission_id', string='Invoices')
-    invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count', store=True)
+    # EMERGENCY FIX: Remove the One2many field and use a computed field instead
+    # invoice_ids = fields.One2many('account.move', 'student_admission_id', string='Invoices')
+    invoice_ids = fields.Many2many('account.move', compute='_compute_invoice_ids', string='Invoices')
+    invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count')
+
+    @api.depends()  # No dependencies to force recomputation every time
+    def _compute_invoice_ids(self):
+        """Compute invoice IDs by searching for invoices linked to this admission"""
+        for record in self:
+            invoices = self.env['account.move'].search([
+                ('student_admission_id', '=', record.id),
+                ('move_type', '=', 'out_invoice')
+            ])
+            record.invoice_ids = invoices
 
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
-        """Compute invoice count - this is fast because invoice_ids is stored"""
+        """Compute invoice count"""
         for record in self:
+            # Force recompute invoice_ids first
+            record._compute_invoice_ids()
             record.invoice_count = len(record.invoice_ids)
+
+    def action_view_invoice(self):
+        """Action to view invoices related to this student admission"""
+        self.ensure_one()
+        
+        # EMERGENCY FIX: Search directly for invoices instead of using the field
+        invoices = self.env['account.move'].search([
+            ('student_admission_id', '=', self.id),
+            ('move_type', '=', 'out_invoice')
+        ])
+        
+        _logger.info(f"🚨 EMERGENCY: Found {len(invoices)} invoices for admission {self.name}: {invoices.ids}")
+        
+        action = {
+            'name': _('Student Invoices'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'view_mode': 'tree,form',
+            'target': 'current',
+            'domain': [('id', 'in', invoices.ids)],
+            'context': {
+                'default_move_type': 'out_invoice',
+                'default_partner_id': self.student_id.id,
+            }
+        }
+        
+        # If there's only one invoice, open it directly in form view
+        if len(invoices) == 1:
+            action.update({
+                'view_mode': 'form',
+                'res_id': invoices.id,
+                'views': [(False, 'form')],
+            })
+        
+        return action
 
     def action_make_invoice(self):
         self.ensure_one()
@@ -55,7 +103,7 @@ class StudentAdmission(models.Model):
             for fee in fees:
                 # Use today's date for invoice_date to avoid sequence mismatch, but keep due date as fee start date
                 today = date.today()
-                
+
                 # Prepare invoice values with proper date handling
                 invoice_vals = {
                     'invoice_origin': self.name or '',
@@ -136,10 +184,10 @@ class StudentAdmission(models.Model):
                 # Create the invoice only if there are lines to add
                 if invoice_lines:
                     invoice_vals['invoice_line_ids'] = invoice_lines
-                    
+
                     # Add pricelist_id to the invoice for our extension
                     invoice_vals['pricelist_id'] = pricelist_to_use.id
-                    
+
                     invoice = self.env['account.move'].sudo().create(invoice_vals)
                     created_invoices += invoice
                     _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s", invoice.name, invoice.id, fee.name, self.name)
@@ -151,6 +199,9 @@ class StudentAdmission(models.Model):
 
             self.is_invoiced = True
             _logger.info(f"Successfully created {len(created_invoices)} invoices for admission {self.name}")
+
+            # EMERGENCY FIX: Force refresh the computed fields
+            self.invalidate_recordset(['invoice_ids', 'invoice_count'])
 
             # Return action to view all created invoices
             return {
@@ -176,13 +227,13 @@ class StudentAdmission(models.Model):
         """
         # Check if the product has the 'is_guardian' tag
         guardian_tag = self.env['product.tag'].search([('name', '=', 'is_guardian')], limit=1)
-        
+
         if guardian_tag and guardian_tag in product.product_tag_ids:
             # Product has is_guardian tag - only include if student admission has is_guardian = True
             if not getattr(self, 'is_guardian', False):
                 _logger.info(f"Product '{product.name}' has 'is_guardian' tag but student admission is_guardian is False. Skipping product.")
                 return True
-        
+
         return False
 
     @api.model_create_multi

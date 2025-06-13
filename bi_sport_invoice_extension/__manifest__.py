@@ -6,7 +6,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/account_move_views.xml',
-        # 'data/fix_invoice_sequences.xml',  # Commented out for now
+        'data/fix_invoice_links.xml',  # Added the fix data file
     ],
     'installable': True,
     'auto_install': False,

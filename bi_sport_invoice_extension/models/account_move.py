@@ -17,22 +17,22 @@ class AccountMove(models.Model):
 
     # Add field to store membership fee name for display purposes
     membership_fee_name = fields.Char(
-        string='Membership Fee', 
-        readonly=True, 
+        string='Membership Fee',
+        readonly=True,
         help="Name of the membership fee used for this invoice"
     )
-    
+
     # Add computed field for display name that combines invoice number with fee name
     display_name_with_fee = fields.Char(
-        string='Invoice Reference', 
+        string='Invoice Reference',
         compute='_compute_display_name_with_fee',
         store=True
     )
 
     # Add the inverse field for the One2many relationship
     student_admission_id = fields.Many2one(
-        'student.admission', 
-        string='Student Admission', 
+        'student.admission',
+        string='Student Admission',
         help="Related student admission record"
     )
 
@@ -128,14 +128,14 @@ class AccountMove(models.Model):
                     sequence = self.env['ir.sequence'].search([
                         ('code', '=', 'account.move.INV')
                     ], limit=1)
-                    
+
                     if sequence:
                         # Generate the next number
                         move.name = sequence.next_by_id(sequence_date=move.date)
                     else:
                         # Fallback to default behavior
                         move.name = '/'
-                        
+
         return super().action_post()
 
     def action_recompute_prices_from_pricelist(self):
@@ -176,3 +176,161 @@ class AccountMove(models.Model):
                 'sticky': False,
             }
         }
+
+    @api.model
+    def fix_existing_invoice_links(self):
+        """
+        Method to fix existing invoices that were created before the student_admission_id link was implemented.
+        This will search for invoices with invoice_origin matching student admissions and link them.
+        """
+        _logger.info("🔧 Starting to fix existing invoice links...")
+        
+        # Find all invoices that have invoice_origin but no student_admission_id
+        unlinked_invoices = self.search([
+            ('invoice_origin', '!=', False),
+            ('student_admission_id', '=', False),
+            ('move_type', '=', 'out_invoice')
+        ])
+        
+        _logger.info(f"🔧 Found {len(unlinked_invoices)} unlinked invoices to process")
+        
+        fixed_count = 0
+        for invoice in unlinked_invoices:
+            # Try to find matching student admission
+            admission = self.env['student.admission'].search([
+                ('name', '=', invoice.invoice_origin)
+            ], limit=1)
+            
+            if admission:
+                # Update the invoice with the admission link
+                update_vals = {'student_admission_id': admission.id}
+                
+                # Also try to extract membership fee name from ref if not already set
+                if not invoice.membership_fee_name and invoice.ref:
+                    try:
+                        if invoice.ref.startswith('Invoice for ') and ' - ' in invoice.ref:
+                            fee_part = invoice.ref.replace('Invoice for ', '').split(' - ')[0]
+                            membership_fee = self.env['sport.membership.fees'].search([
+                                ('name', '=', fee_part)
+                            ], limit=1)
+                            
+                            if membership_fee:
+                                update_vals['membership_fee_name'] = membership_fee.name
+                                # Also update ref to be cleaner
+                                update_vals['ref'] = f"{membership_fee.name} - {admission.name}"
+                        
+                        # If ref doesn't follow the pattern but contains a fee name, try to match it
+                        elif ' - ' in invoice.ref:
+                            potential_fee_name = invoice.ref.split(' - ')[0]
+                            membership_fee = self.env['sport.membership.fees'].search([
+                                ('name', '=', potential_fee_name)
+                            ], limit=1)
+                            
+                            if membership_fee:
+                                update_vals['membership_fee_name'] = membership_fee.name
+                    
+                    except Exception as e:
+                        _logger.warning(f"🔧 Error processing ref for invoice {invoice.name}: {e}")
+                
+                # Apply the updates
+                invoice.write(update_vals)
+                fixed_count += 1
+                
+                _logger.info(f"🔧 Fixed invoice {invoice.name} -> linked to admission {admission.name}")
+            else:
+                _logger.warning(f"🔧 No admission found for invoice {invoice.name} with origin {invoice.invoice_origin}")
+        
+        _logger.info(f"🔧 Fixed {fixed_count} invoices successfully!")
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': f"Fixed {fixed_count} existing invoices! They are now properly linked to their student admissions.",
+                'type': 'success',
+                'sticky': True,
+            }
+        }
+
+    def action_fix_invoice_link(self):
+        """
+        Action to fix a single invoice's link to student admission
+        """
+        self.ensure_one()
+        
+        if self.student_admission_id:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'message': "This invoice is already linked to a student admission.",
+                    'type': 'info',
+                    'sticky': False,
+                }
+            }
+        
+        if not self.invoice_origin:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'message': "No invoice origin found. Cannot link to student admission.",
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
+        
+        # Try to find matching student admission
+        admission = self.env['student.admission'].search([
+            ('name', '=', self.invoice_origin)
+        ], limit=1)
+        
+        if admission:
+            update_vals = {'student_admission_id': admission.id}
+            
+            # Also try to extract membership fee name from ref if not already set
+            if not self.membership_fee_name and self.ref:
+                try:
+                    if self.ref.startswith('Invoice for ') and ' - ' in self.ref:
+                        fee_part = self.ref.replace('Invoice for ', '').split(' - ')[0]
+                        membership_fee = self.env['sport.membership.fees'].search([
+                            ('name', '=', fee_part)
+                        ], limit=1)
+                        
+                        if membership_fee:
+                            update_vals['membership_fee_name'] = membership_fee.name
+                            update_vals['ref'] = f"{membership_fee.name} - {admission.name}"
+                    
+                    elif ' - ' in self.ref:
+                        potential_fee_name = self.ref.split(' - ')[0]
+                        membership_fee = self.env['sport.membership.fees'].search([
+                            ('name', '=', potential_fee_name)
+                        ], limit=1)
+                        
+                        if membership_fee:
+                            update_vals['membership_fee_name'] = membership_fee.name
+                
+                except Exception as e:
+                    _logger.warning(f"Error processing ref for invoice {self.name}: {e}")
+            
+            self.write(update_vals)
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'message': f"Successfully linked invoice to student admission {admission.name}!",
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+        else:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'message': f"No student admission found with name: {self.invoice_origin}",
+                    'type': 'warning',
+                    'sticky': False,
+                }
+            }
