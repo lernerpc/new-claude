@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Server Action to Fix Existing Invoice Links -->
+    <record id="action_fix_existing_invoice_links" model="ir.actions.server">
+        <field name="name">Fix All Existing Invoice Links</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">
+# Fix all invoices that have invoice_origin but no student_admission_id
+unlinked_invoices = env['account.move'].search([
+    ('invoice_origin', '!=', False),
+    ('student_admission_id', '=', False),
+    ('move_type', '=', 'out_invoice')
+])
+
+fixed_count = 0
+for invoice in unlinked_invoices:
+    # Try to find matching student admission
+    admission = env['student.admission'].search([
+        ('name', '=', invoice.invoice_origin)
+    ], limit=1)
+    
+    if admission:
+        # Update the invoice with the admission link
+        update_vals = {'student_admission_id': admission.id}
+        
+        # Also try to extract membership fee name from ref if not already set
+        if not invoice.membership_fee_name and invoice.ref:
+            try:
+                if invoice.ref.startswith('Invoice for ') and ' - ' in invoice.ref:
+                    fee_part = invoice.ref.replace('Invoice for ', '').split(' - ')[0]
+                    membership_fee = env['sport.membership.fees'].search([
+                        ('name', '=', fee_part)
+                    ], limit=1)
+                    
+                    if membership_fee:
+                        update_vals['membership_fee_name'] = membership_fee.name
+                        update_vals['ref'] = f"{membership_fee.name} - {admission.name}"
+                
+                elif ' - ' in invoice.ref:
+                    potential_fee_name = invoice.ref.split(' - ')[0]
+                    membership_fee = env['sport.membership.fees'].search([
+                        ('name', '=', potential_fee_name)
+                    ], limit=1)
+                    
+                    if membership_fee:
+                        update_vals['membership_fee_name'] = membership_fee.name
+            
+            except Exception as e:
+                pass
+        
+        # Apply the updates
+        invoice.write(update_vals)
+        fixed_count += 1
+
+# Also trigger recomputation of invoice counts
+admissions = env['student.admission'].search([])
+admissions._compute_invoice_count()
+
+action = {
+    'type': 'ir.actions.client',
+    'tag': 'display_notification',
+    'params': {
+        'message': f'Fixed {fixed_count} existing invoices! They are now properly linked.',
+        'type': 'success',
+        'sticky': True,
+    }
+}
+        </field>
+    </record>
+
+    <!-- Server Action for Single Invoice Fix -->
+    <record id="action_fix_single_invoice_link" model="ir.actions.server">
+        <field name="name">Fix This Invoice Link</field>
+        <field name="model_id" ref="account.model_account_move"/>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="state">code</field>
+        <field name="code">
+for invoice in records:
+    if invoice.student_admission_id:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': 'This invoice is already linked to a student admission.',
+                'type': 'info',
+                'sticky': False,
+            }
+        }
+        break
+    
+    if not invoice.invoice_origin:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': 'No invoice origin found. Cannot link to student admission.',
+                'type': 'warning',
+                'sticky': False,
+            }
+        }
+        break
+    
+    # Try to find matching student admission
+    admission = env['student.admission'].search([
+        ('name', '=', invoice.invoice_origin)
+    ], limit=1)
+    
+    if admission:
+        update_vals = {'student_admission_id': admission.id}
+        
+        # Also try to extract membership fee name from ref if not already set
+        if not invoice.membership_fee_name and invoice.ref:
+            try:
+                if invoice.ref.startswith('Invoice for ') and ' - ' in invoice.ref:
+                    fee_part = invoice.ref.replace('Invoice for ', '').split(' - ')[0]
+                    membership_fee = env['sport.membership.fees'].search([
+                        ('name', '=', fee_part)
+                    ], limit=1)
+                    
+                    if membership_fee:
+                        update_vals['membership_fee_name'] = membership_fee.name
+                        update_vals['ref'] = f"{membership_fee.name} - {admission.name}"
+                
+                elif ' - ' in invoice.ref:
+                    potential_fee_name = invoice.ref.split(' - ')[0]
+                    membership_fee = env['sport.membership.fees'].search([
+                        ('name', '=', potential_fee_name)
+                    ], limit=1)
+                    
+                    if membership_fee:
+                        update_vals['membership_fee_name'] = membership_fee.name
+            
+            except Exception as e:
+                pass
+        
+        invoice.write(update_vals)
+        
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': f'Successfully linked invoice to student admission {admission.name}!',
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+    else:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'message': f'No student admission found with name: {invoice.invoice_origin}',
+                'type': 'warning',
+                'sticky': False,
+            }
+        }
+</field>
+    </record>
+</odoo>
