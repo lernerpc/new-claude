@@ -383,34 +383,51 @@
                             <div class="section-header bg-primary text-white">
                                 <h6>الأنشطة والأسعار</h6>
                             </div>
-                            <table class="table table-compact">
-                                <tr>
-                                    <th>النشاط</th>
-                                    <th>السعر</th>
-                                </tr>
-                                <t t-foreach="registration.activity_ids" t-as="activity">
+                            <t t-if="registration.activity_ids">
+                                <table class="table table-compact">
                                     <tr>
-                                        <td t-esc="activity.name"/>
-                                        <td>
-                                            <t t-esc="activity.list_price"/>
- جنيه
-                                        </td>
+                                        <th>النشاط</th>
+                                        <th>السعر</th>
                                     </tr>
-                                </t>
-                            </table>
+                                    <t t-set="total_activities_price" t-value="0"/>
+                                    <t t-foreach="registration.activity_ids" t-as="activity">
+                                        <t t-set="activity_price" t-value="registration.pricelist_id._get_product_price(activity, 1) if registration.pricelist_id else activity.list_price"/>
+                                        <t t-set="total_activities_price" t-value="total_activities_price + activity_price"/>
+                                        <tr>
+                                            <td t-esc="activity.name"/>
+                                            <td>
+                                                <t t-esc="activity_price"/>
+ جنيه
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </table>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    لا توجد أنشطة محددة
+                                </div>
+                            </t>
                         </div>
                         <div class="col-4">
                             <div class="price-summary">
                                 <div>ملخص التكلفة</div>
-                                <div>الأنشطة:                                    <t t-esc="sum(activity.list_price for activity in registration.activity_ids)"/>
+                                <t t-set="total_activities_price" t-value="0"/>
+                                <t t-foreach="registration.activity_ids" t-as="activity">
+                                    <t t-set="activity_price" t-value="registration.pricelist_id._get_product_price(activity, 1) if registration.pricelist_id else activity.list_price"/>
+                                    <t t-set="total_activities_price" t-value="total_activities_price + activity_price"/>
+                                </t>
+                                <div>الأنشطة:                                    <t t-esc="total_activities_price"/>
  جنيه</div>
                                 <div>البطاقة: 50 جنيه</div>
-                                <div>الاستمارة: 50 جنيه</div>
+                                <t t-if="registration.member_type != 'academic'">
+                                    <div>الاستمارة: 50 جنيه</div>
+                                </t>
                                 <t t-if="registration.is_guardian">
                                     <div>المرافق: 50 جنيه</div>
                                 </t>
                                 <hr/>
-                                <div>الإجمالي:                                    <t t-esc="sum(activity.list_price for activity in registration.activity_ids) + 100 + (50 if registration.is_guardian else 0)"/>
+                                <div>الإجمالي:                                    <t t-esc="total_activities_price + 50 + (50 if registration.member_type != 'academic' else 0) + (50 if registration.is_guardian else 0)"/>
  جنيه</div>
                             </div>
                         </div>
