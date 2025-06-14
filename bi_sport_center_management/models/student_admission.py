@@ -22,7 +22,17 @@ class StudentAdmission(models.Model):
     gender = fields.Selection([('male', 'ذكر'), ('female', 'أنثى')], string='الجنس', related='student_id.gender', store=True, readonly=False)
     is_disability = fields.Boolean('هل يوجد أي إعاقة', related='student_id.is_disability', store=True, readonly=False)
     disability_description = fields.Text('وصف الإعاقة', related='student_id.disability_description', store=True, readonly=False)
-    activity_ids = fields.Many2many('product.product', string="الأنشطة الرياضية", domain=[('is_sportname', '=', True)])
+    # Add member_type field with proper labels
+    member_type = fields.Selection([
+        ('regular', 'عضو رياضي'),
+        ('academic', 'عضو أكاديمي')
+    ], string='نوع العضوية', default='regular', required=True)
+
+    academic_subtype = fields.Selection([
+        ('7star', '7 ستار'),
+        ('academic', 'أكاديمية')
+    ], string='نوع العضوية الأكاديمية', help="نوع العضوية الأكاديمية المختارة") 
+    activity_ids = fields.Many2many('product.product', string="الأنشطة الرياضية", domain=[('is_sportname', '=', True)]) 
     trainer_id = fields.Many2one(comodel_name='res.partner', domain=[('is_coach', '=', True)], string='المدرب')
     state = fields.Selection([
         ('new', 'New'),
@@ -38,7 +48,7 @@ class StudentAdmission(models.Model):
     is_parking = fields.Boolean('هل يحتاج إلى موقف سيارة؟', default=False)
     student_photo = fields.Binary('صورة الطالب', attachment=True)
     parent_photo = fields.Binary('صورة ولي الأمر', attachment=True)
-
+    
     # Add pricelist field for price calculations
     pricelist_id = fields.Many2one('product.pricelist', string='جهة الانتماء')
     # Add parent reference
@@ -111,13 +121,49 @@ class StudentAdmission(models.Model):
             if record.parent_mobile and (not record.parent_mobile.startswith('0') or not record.parent_mobile.isdigit() or len(record.parent_mobile) != 11):
                 raise ValidationError(_('رقم جوال ولي الأمر يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا.'))
 
-    @api.model_create_multi
+    @api.constrains('member_type', 'activity_ids', 'pricelist_id')
+    def _check_member_type_requirements(self):
+        """Validate requirements based on member type"""
+        for record in self:
+            if record.member_type == 'regular':
+                # Regular members must have activities and pricelist
+                if not record.activity_ids:
+                    raise ValidationError(_('العضوية الرياضية تتطلب اختيار نشاط واحد على الأقل.'))
+                if not record.pricelist_id:
+                    raise ValidationError(_('العضوية الرياضية تتطلب اختيار جهة الانتماء.'))
+                    
+                # Check if academic product is included (shouldn't be for regular members)
+                academic_product = self.env['product.product'].search([
+                    ('name', '=', 'أكاديمية'),
+                    ('is_sportname', '=', True)
+                ], limit=1)
+                if academic_product and academic_product in record.activity_ids:
+                    raise ValidationError(_('لا يمكن للعضوية الرياضية أن تشمل المنتج الأكاديمي.'))
+                    
+            elif record.member_type == 'academic':
+                # Academic members should have the academic product
+                academic_product = self.env['product.product'].search([
+                    ('name', '=', 'أكاديمية'),
+                    ('is_sportname', '=', True)
+                ], limit=1)
+                
+                if academic_product and academic_product not in record.activity_ids:
+                    # Auto-assign academic product if missing
+                    record.activity_ids = [(4, academic_product.id)]
+                
+                # Academic members should not have sports activities (only academic product)
+                if record.activity_ids:
+                    non_academic_activities = record.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
+                    if non_academic_activities:
+                        raise ValidationError(_('العضوية الأكاديمية لا يمكن أن تشمل أنشطة رياضية.'))
+
+    @api.model_create_multi  
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', _('New')) == _('New'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('student.admission') or _('New')
         res = super(StudentAdmission, self).create(vals_list)
-
+        
         # Only create portal access if email is provided
         if res.email and res.email.strip():
             portal_wizard_obj = self.env['portal.wizard']
@@ -135,6 +181,7 @@ class StudentAdmission(models.Model):
         return res
 
     def action_enroll(self):
+        """Override to handle different member types"""
         self.state = 'enrolled'
         self.student_id.update({'is_student': False})
 
@@ -154,6 +201,7 @@ class StudentAdmission(models.Model):
         }
 
     def action_make_student(self):
+        """Override to handle different member types"""
         if not self.is_invoiced:
             return {
                 'name': 'Create Invoice',
@@ -169,15 +217,24 @@ class StudentAdmission(models.Model):
             if self.parent_id and self.parent_photo:
                 self.parent_id.write({
                     'parent_image_1920': self.parent_photo,
-                    'image_1920': self.parent_photo,  # sync to avatar
+                    'image_1920': self.parent_photo,
                 })
 
             student_vals = {
                 'is_student': True,
-                'sport_id': [(6, 0, self.activity_ids.ids)] if self.activity_ids else False,
             }
+            
+            # Only add sports for regular members or if activities exist
+            if self.member_type == 'regular' and self.activity_ids:
+                # Filter out academic products for regular members
+                sports_activities = self.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
+                if sports_activities:
+                    student_vals['sport_id'] = [(6, 0, sports_activities.ids)]
+            elif self.member_type == 'academic':
+                # Academic members don't get sport assignments
+                student_vals['sport_id'] = [(6, 0, [])]
 
-            # ✅ Sync student photo if present
+            # Sync student photo if present
             if hasattr(self, 'student_photo') and self.student_photo:
                 student_vals['image_1920'] = self.student_photo
 
@@ -213,3 +270,52 @@ class StudentAdmission(models.Model):
             'url': '/print/registration/%s' % self.id,
             'target': 'new',
         }
+
+    @api.onchange('member_type')
+    def _onchange_member_type(self):
+        """Handle member type changes in the UI"""
+        if self.member_type == 'academic':
+            # Find or suggest academic product
+            academic_product = self.env['product.product'].search([
+                ('name', '=', 'أكاديمية'),
+                ('is_sportname', '=', True)
+            ], limit=1)
+            if academic_product:
+                self.activity_ids = [(6, 0, [academic_product.id])]
+        elif self.member_type == 'regular':
+            # Clear academic product if switching from academic
+            academic_product = self.env['product.product'].search([
+                ('name', '=', 'أكاديمية'),
+                ('is_sportname', '=', True)
+            ], limit=1)
+            if academic_product and academic_product in self.activity_ids:
+                self.activity_ids = [(3, academic_product.id)]
+
+    def get_total_price(self):
+        """Calculate total price based on member type"""
+        total = 0
+        
+        # Base fees
+        if self.member_type == 'academic':
+            total += 50  # Academic card fee
+        else:
+            total += 50  # ID card fee
+            total += 50  # Form fee
+        
+        # Guardian fee
+        if self.is_guardian:
+            total += 50
+            
+        # Activity fees (only for regular members)
+        if self.member_type == 'regular' and self.activity_ids and self.pricelist_id:
+            for activity in self.activity_ids:
+                if activity.name != 'أكاديمية':  # Exclude academic product
+                    price = self.pricelist_id._get_product_price(activity, 1)
+                    total += price
+                    
+        return total
+
+    def get_member_type_display(self):
+        """Get display name for member type"""
+        member_type_dict = dict(self._fields['member_type'].selection)
+        return member_type_dict.get(self.member_type, self.member_type)

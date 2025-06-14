@@ -57,13 +57,13 @@
 }
 
         .id-photo {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <!-- width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <!-- width: 100%;
             height: auto;
             max-height: 100%; -->
         }
 
         .qr-code {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <!-- width: 16mm;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <!-- width: 16mm;
             height: 16mm;
             height: auto;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -75,7 +75,7 @@
         }
 
         .student-photo {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <!-- border-radius: 50%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <!-- border-radius: 50%;
             width: 50px;
             height: 50px; -->
         }
@@ -212,12 +212,6 @@
                                 <div style="margin-bottom: 2mm;">
                                     <strong>رقم العضوية</strong>
                                     <span style="margin-inline-start: 2mm;">
-                                        <t t-esc="student.name"/>
-                                    </span>
-                                </div>
-                                <div style="margin-bottom: 2mm;">
-                                    <strong>رقم الاستمارة</strong>
-                                    <span style="margin-inline-start: 2mm;">
                                         <t t-esc="student.membership_number"/>
                                     </span>
                                 </div>
@@ -225,6 +219,17 @@
                                     <strong>السنة</strong>
                                     <span style="margin-inline-start: 2mm;">2024-2025</span>
                                 </div>
+
+                                <t t-if="student.academic_subtype">
+                                    <div t-if="student.academic_subtype == '7star'" class="transparent-bg" style="margin-top: 1mm;">
+                                        <strong>أكاديمية</strong>
+                                        <span style="margin-inline-start: 2mm;">7 ستار ⭐</span>
+                                    </div>
+                                    <div t-elif="student.academic_subtype == 'academic'" class="transparent-bg" style="margin-top: 1mm;">
+                                        <strong>أكاديمية</strong>
+                                        <span style="margin-inline-start: 2mm;">الأكاديمية 🏫</span>
+                                    </div>
+                                </t>
                             </div>
 
                             <!-- QR Code Column (col-2) -->

@@ -25,8 +25,6 @@ class StudentRegistration(http.Controller):
     def remove2(self, string):
         return " ".join(string.split()) if string else ""
     
-
-         
     def _get_pricelist_id(self, pricelist_value):
         """
         Helper method to handle pricelist_id whether it comes as string or int
@@ -43,6 +41,11 @@ class StudentRegistration(http.Controller):
     def registration_create(self, **kw):
         admission = False
         massage = 'عذرًا، بعض القيم مفقودة! الرجاء ملء الحقول أولاً'
+        
+        # Add logging for debugging
+        _logger.info("Received member_type: %s", kw.get('member_type'))
+        _logger.info("Received form data keys: %s", list(kw.keys()))
+        
         if request.session.get('is_data') and kw.get('check_data'):
             if kw.get('fname') and kw.get('lname'):
                 name = self.remove2(kw.get('fname')) + ' ' + self.remove2(kw.get('lname'))
@@ -50,6 +53,14 @@ class StudentRegistration(http.Controller):
                 parent_mobile = self.remove(kw.get('parent_mobile'))
                 student_national_id = self.remove(kw.get('student_national_id'))
                 parent_national_id = self.remove(kw.get('parent_national_id'))
+                member_type = kw.get('member_type', 'regular')  # Get member type
+                academic_subtype = kw.get('academic_subtype', '')  # Get academic subtype
+
+
+                # Validate member type
+                if not member_type or member_type not in ['regular', 'academic']:
+                    massage = 'يرجى اختيار نوع العضوية.'
+                    return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
 
                 # Validate national IDs
                 if student_national_id and (not student_national_id.isdigit() or len(student_national_id) != 14):
@@ -78,7 +89,6 @@ class StudentRegistration(http.Controller):
 
                 # Handle file uploads
                 student_photo_data = False
-
                 student_photo = request.httprequest.files.get('student_photo')
                 if student_photo and student_photo.filename:
                     try:
@@ -137,29 +147,93 @@ class StudentRegistration(http.Controller):
                 student_partner = request.env['res.partner'].sudo().create(partner_vals)
 
                 if student_partner:
-                    activity_ids_raw = request.httprequest.form.getlist('activity_ids[]')
-                    activity_ids = [(6, 0, list(map(int, activity_ids_raw)))] if activity_ids_raw else []
+                    # Handle activities and pricelist based on member type
+                    if member_type == 'academic':
+                        # For academic members: automatically assign academic product and default pricelist
+                        
+                        # Find the academic product by name
+                        academic_product = request.env['product.product'].sudo().search([
+                            ('name', '=', 'أكاديمية'),
+                            ('is_sportname', '=', True)
+                        ], limit=1)
+                        
+                        if not academic_product:
+                            # If academic product doesn't exist, create it
+                            academic_product = request.env['product.product'].sudo().create({
+                                'name': 'أكاديمية',
+                                'is_sportname': True,
+                                'list_price': 0.0,  # Set a base price
+                                'type': 'service',
+                                'categ_id': request.env.ref('product.product_category_all').id,
+                            })
+                            _logger.info("Created academic product: %s", academic_product.name)
+                        
+                        # Get the first available pricelist (default pricelist)
+                        default_pricelist = request.env['product.pricelist'].sudo().search([
+                            ('name', '=', 'academic')
+                        ], limit=1)
+                        
+                        if not default_pricelist:
+                            # If no pricelist exists, create a default one
+                            default_pricelist = request.env['product.pricelist'].sudo().create({
+                                'name': 'academic',
+                                'active': True,
+                            })
+                            _logger.info("Created default pricelist: %s", default_pricelist.name)
+                        
+                        activity_ids = [(6, 0, [academic_product.id])]
+                        pricelist_id = default_pricelist.id
+                        
+                        _logger.info("Academic member - Product: %s, Pricelist: %s", academic_product.name, default_pricelist.name)
+                        
+                    else:
+                        # For regular members: must have activities and pricelist from form
+                        activity_ids_raw = request.httprequest.form.getlist('activity_ids[]')
+                        activity_ids = [(6, 0, list(map(int, activity_ids_raw)))] if activity_ids_raw else []
+                        pricelist_id = self._get_pricelist_id(kw.get('pricelist_id'))
+                        academic_subtype = ''  # Clear academic subtype for regular members
+
+                        
+                        # Validate that regular members have activities
+                        if not activity_ids_raw:
+                            student_partner.sudo().unlink()
+                            massage = 'عذرًا، يجب اختيار نشاط واحد على الأقل للعضوية الرياضية.'
+                            return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
+                        
+                        # Validate pricelist for regular members
+                        if not pricelist_id:
+                            student_partner.sudo().unlink()
+                            massage = 'عذرًا، يجب اختيار جهة الانتماء للعضوية الرياضية.'
+                            return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
 
                     admission_vals = {
                         'student_id': student_partner.id,
                         'parent_id': parent_partner.id,
                         'activity_ids': activity_ids,
                         'check_register': kw.get('check_data') == 'on',
-                        'pricelist_id': self._get_pricelist_id(kw.get('pricelist_id')),
+                        'pricelist_id': pricelist_id,
                         'is_guardian': kw.get('is_guardian') == 'on',
                         'is_parking': kw.get('is_parking') == 'on',
                         'student_photo': student_photo_data,
+                        'member_type': member_type,
+                        'academic_subtype': academic_subtype,  # Add academic subtype
+
                     }
 
-                    if admission_vals.get('activity_ids'):
-                        request.session['is_data'] = False
-                        admission = request.env['student.admission'].sudo().create(admission_vals)
-                        return request.render('bi_sport_center_management.registration_create_massage', {'massage': 'تم التسجيل بنجاح', 'admission': admission})
+                    request.session['is_data'] = False
+                    admission = request.env['student.admission'].sudo().create(admission_vals)
+                    
+                    if member_type == 'academic':
+                        message = 'تم التسجيل بنجاح كعضو أكاديمي'
                     else:
-                        student_partner.sudo().unlink()
-                        massage = 'عذرًا، بيانات النشاط مفقودة. لا يمكن إنشاء القبول.'
-                        return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
+                        message = 'تم التسجيل بنجاح كعضو رياضي'
+                        
+                    return request.render('bi_sport_center_management.registration_create_massage', {
+                        'massage': message, 
+                        'admission': admission
+                    })
 
+        # Error handling
         if admission:
             massage = f'تم إنشاء طلب التسجيل الخاص بك {admission.name} بنجاح.'
             return request.render('bi_sport_center_management.registration_create_massage', {
@@ -173,7 +247,6 @@ class StudentRegistration(http.Controller):
             elif not request.session.get('is_data'):
                 massage = 'خطأ في الجلسة، يرجى المحاولة مرة أخرى.'
             return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
-
 
     @http.route('/inquiry/create', auth='public', website=True, methods=['POST'], csrf=False)
     def inquiry_create(self, **kw):
@@ -213,9 +286,7 @@ class StudentRegistration(http.Controller):
         centers = request.env['res.partner'].sudo().search([('is_sport', '=', True)])
         all_activities = request.env['product.product'].sudo().search([('is_sportname', '=', True)])
 
-
         _logger.info("All Activities: %s", all_activities)
-
 
         # Group activities by category
         activities_by_category = {}
@@ -236,7 +307,6 @@ class StudentRegistration(http.Controller):
         }
 
         return request.render('bi_sport_center_management.registration', values)
-
 
     @http.route('/inquiry/', type='http', auth='public', website=True, sitemap=False)
     def inquiry(self, **kw):
@@ -341,6 +411,29 @@ class StudentRegistration(http.Controller):
             if center and center.exists() and center.sport_id:
                 sports_data = [{'id': sport.id, 'name': sport.name} for sport in center.sport_id if sport.is_sportname]
         return sports_data
+
+    @http.route('/get_activity_price', type='json', auth='public', website=True, csrf=False)
+    def get_activity_price(self, activity_id, pricelist_id, **kw):
+        try:
+            if not activity_id or not pricelist_id:
+                return {'price': 0}
+            activity = request.env['product.product'].sudo().browse(int(activity_id))
+            pricelist = request.env['product.pricelist'].sudo().browse(int(pricelist_id))
+            if activity and pricelist:
+                price = pricelist._get_product_price(activity, 1)
+                return {'price': price}
+            else:
+                return {'price': 0}
+        except Exception as e:
+            _logger.error("Error getting activity price: %s", str(e))
+            return {'price': 0}
+
+    @http.route('/print/registration/<int:registration_id>', type='http', auth='user')
+    def print_registration(self, registration_id):
+        registration = request.env['student.admission'].browse(registration_id)
+        if not registration:
+            return request.not_found()
+        return request.render('bi_sport_center_management.registration_print', {'registration': registration})
 
 
 class EventPortal(CustomerPortal):
@@ -559,7 +652,6 @@ class EventPortal(CustomerPortal):
         values = self._event_get_page_view_values(event_sudo, access_token, **kw)
         return request.render("bi_sport_center_management.event_followup", values)
 
-
     @http.route('/event/ticket/report/<int:event_id>', type='http', auth='user')
     def download_qweb_report(self, event_id=None, access_token=None, **kw):
         try:
@@ -570,32 +662,3 @@ class EventPortal(CustomerPortal):
         pdf = request.env["ir.actions.report"].sudo()._render_qweb_pdf('event.action_report_event_registration_full_page_ticket', event_sudo.id)[0]
         report_name = event_sudo.name + '.pdf'
         return request.make_response(pdf, headers=[('Content-Type', 'application/pdf'), ('Content-Disposition', content_disposition(report_name))])
-    
-
-
-
-    # Add this method to your StudentRegistration class in paste.txt
-
-    @http.route('/get_activity_price', type='json', auth='public', website=True, csrf=False)
-    def get_activity_price(self, activity_id, pricelist_id, **kw):
-        try:
-            if not activity_id or not pricelist_id:
-                return {'price': 0}
-            activity = request.env['product.product'].sudo().browse(int(activity_id))
-            pricelist = request.env['product.pricelist'].sudo().browse(int(pricelist_id))
-            if activity and pricelist:
-                price = pricelist._get_product_price(activity, 1)
-                return {'price': price}
-            else:
-                return {'price': 0}
-        except Exception as e:
-            _logger.error("Error getting activity price: %s", str(e))
-            return {'price': 0}
-        
-
-    @http.route('/print/registration/<int:registration_id>', type='http', auth='user')
-    def print_registration(self, registration_id):
-        registration = request.env['student.admission'].browse(registration_id)
-        if not registration:
-            return request.not_found()
-        return request.render('bi_sport_center_management.registration_print', {'registration': registration})

@@ -251,14 +251,15 @@
                                                         <div style="font-size: 12px; margin-bottom: 4px;">الأنشطة:                                                            <span t-esc="total_activities_price"/>
  جنيه</div>
                                                         <div style="font-size: 12px; margin-bottom: 4px;">البطاقة: 50 جنيه</div>
-                                                        <div style="font-size: 12px; margin-bottom: 4px;">الاستمارة: 50 جنيه</div>
-
+                                                        <t t-if="admission.member_type != 'academic'">
+                                                            <div style="font-size: 12px; margin-bottom: 4px;">الاستمارة: 50 جنيه</div>
+                                                        </t>
                                                         <t t-if="admission.is_guardian">
                                                             <div style="font-size: 12px; margin-bottom: 4px;">المرافق: 50 جنيه</div>
                                                         </t>
                                                         <hr style="margin: 6px 0; border-color: rgba(255,255,255,0.3);"/>
                                                         <div style="font-size: 14px; font-weight: bold;">
-                                                        الإجمالي:                                                            <span t-esc="total_activities_price + 50 + 50 + (50 if admission.is_guardian else 0)"/>
+                الإجمالي:                                                            <span t-esc="total_activities_price + 50 + (50 if admission.member_type != 'academic' else 0) + (50 if admission.is_guardian else 0)"/>
  جنيه
                                                         </div>
                                                     </div>
@@ -649,6 +650,7 @@
         </t>
     </template>
 
+
     <template id="registration" name="Student - Registration">
         <t t-call="website.layout">
             <div id="wrap" dir="rtl">
@@ -853,6 +855,93 @@
                 background-position: right calc(0.375em + 0.1875rem) center;
                 background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
             }
+
+
+
+
+            /* Enhanced Member Type Styling */
+.member-type-option:hover .form-check {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.member-type-option input[type="radio"]:checked + label {
+    color: #fff !important;
+}
+
+.member-type-option input[type="radio"]:checked + label .fa {
+    animation: pulse 1s infinite; } .member-type-option:has(input[type="radio"]:checked) .form-check {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    border-color: #007bff !important;
+    color: white !important; } .member-type-option:has(input[type="radio"]:checked) .form-check label {
+    color: white !important; } .member-type-option:has(input[type="radio"]:checked) .form-check small {
+    color: #e9ecef !important;
+}
+
+/* Academic member specific styling */
+.member-type-option:has(#academic_member:checked) .form-check {
+    background: linear-gradient(135deg, #17a2b8, #117a8b) !important;
+    border-color: #17a2b8 !important;
+}
+
+/* Academic subtypes styling */
+.academic-subtype-option:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.academic-subtype-option input[type="radio"]:checked + label {
+    color: #fff !important; } .academic-subtype-option:has(input[type="radio"]:checked) {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    border-color: #28a745 !important;
+}
+
+.academic-subtype-option:has(#academic_7star:checked) {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    border-color: #28a745 !important;
+}
+
+.academic-subtype-option:has(#academic_regular:checked) {
+    background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    border-color: #ffc107 !important; } .academic-subtype-option:has(input[type="radio"]:checked) label {
+    color: white !important; } .academic-subtype-option:has(input[type="radio"]:checked) small {
+    color: #f8f9fa !important;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .member-type-container {
+        padding: 15px !important;
+    }
+    
+    .academic-subtypes {
+        margin-right: 15px !important;
+    }
+    
+    .academic-subtypes .row .col-md-6 {
+        margin-bottom: 10px;
+    }
+}
+
+        
+
+
+ 
+
+            .regular-only, .academic-only {
+                transition: all 0.3s ease;
+            }
+            
+            .section-hidden {
+                display: none !important;
+                visibility: hidden !important;
+            }
                 </style>
 
                 <!-- Loader -->
@@ -861,416 +950,695 @@
                 </div>
 
                 <script type="text/javascript">
-            document.addEventListener('DOMContentLoaded', function() {
-                // Price calculation variables
-                let selectedActivities = [];
-                let selectedPricelist = null;
-                let isGuardian = false;
-                const ID_CARD_FEE = 50;
-                const FORM_FEE = 50;
-                const GUARDIAN_FEE = 50;
+//                                                                                                                                                                                                                                                                                        <![CDATA[
+document.addEventListener('DOMContentLoaded', function() {
+    // Price calculation variables
+    let selectedActivities = [];
+    let selectedPricelist = null;
+    let isGuardian = false;
+    let memberType = 'regular'; // Default member type
+    const ID_CARD_FEE = 50;
+    const FORM_FEE = 50;
+    const GUARDIAN_FEE = 50;
 
-                // Validation functions
-                function validateNationalId(nationalId, fieldName, fieldElement) {
-                    const errorElement = document.getElementById(fieldElement.id + '_error');
-                    if (!nationalId) {
-                        showError(errorElement, fieldName + ' مطلوب', fieldElement);
-                        return false;
-                    }
-                    if (!nationalId.match(/^\d{14}$/)) {
-                        showError(errorElement, fieldName + ' يجب أن يكون 14 رقمًا', fieldElement);
-                        return false;
-                    }
-                    hideError(errorElement, fieldElement);
-                    return true;
-                }
+    // Member type change handler
+    const memberTypeInputs = document.querySelectorAll('input[name="member_type"]');
+    console.log('Found member type inputs:', memberTypeInputs.length); // Debug
+    
+    memberTypeInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            console.log('Member type changed to:', this.value);
+            memberType = this.value;
+            toggleSectionsByMemberType();
+            updateValidationRules();
+            updatePriceCalculation();
+            updateSubmitButton();
+        });
+    });
 
-                function validateMobile(mobile, fieldName, fieldElement, required = true) {
-                    const errorElement = document.getElementById(fieldElement.id + '_error');
-                    if (!mobile &amp;&amp; required) {
-                        showError(errorElement, fieldName + ' مطلوب', fieldElement);
-                        return false;
-                    }
-                    if (mobile &amp;&amp; !mobile.match(/^0\d{10}$/)) {
-                        showError(errorElement, 'رقم الهاتف يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا', fieldElement);
-                        return false;
-                    }
-                    hideError(errorElement, fieldElement);
-                    return true;
-                }
-
-                function validateEmail(email, fieldElement) {
-                    const errorElement = document.getElementById(fieldElement.id + '_error');
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (email &amp;&amp; !emailRegex.test(email)) {
-                        showError(errorElement, 'البريد الإلكتروني غير صحيح', fieldElement);
-                        return false;
-                    }
-                    hideError(errorElement, fieldElement);
-                    return true;
-                }
-
-                function validateRequired(value, fieldName, fieldElement) {
-                    const errorElement = document.getElementById(fieldElement.id + '_error');
-                    if (!value || value.trim() === '') {
-                        showError(errorElement, fieldName + ' مطلوب', fieldElement);
-                        return false;
-                    }
-                    hideError(errorElement, fieldElement);
-                    return true;
-                }
-
-                function validateFileRequired(fileInput, fieldName) {
-                    const errorElement = document.getElementById(fileInput.id + '_error');
-                    if (!fileInput.files || fileInput.files.length === 0) {
-                        showError(errorElement, fieldName + ' مطلوبة', fileInput);
-                        return false;
-                    }
-                    hideError(errorElement, fileInput);
-                    return true;
-                }
-
-                function showError(errorElement, message, fieldElement) {
-                    if (errorElement &amp;&amp; fieldElement) {
-                        errorElement.textContent = message;
-                        errorElement.style.display = 'block';
-                        fieldElement.classList.add('is-invalid');
-                        fieldElement.classList.remove('is-valid');
-                    }
-                }
-
-                function hideError(errorElement, fieldElement) {
-                    if (errorElement &amp;&amp; fieldElement) {
-                        errorElement.style.display = 'none';
-                        fieldElement.classList.remove('is-invalid');
-                        fieldElement.classList.add('is-valid');
-                    }
-                }
-
-                // Initialize all fields as invalid (red) on page load
-                function initializeValidation() {
-                    const requiredFields = [
-                        'fname', 'lname', 'student_national_id', 'birth_date', 
-                        'gender', 'parent_fullname', 'parent_national_id', 
-                        'parent_mobile', 'student_photo'
-                    ];
-                    
-                    requiredFields.forEach(fieldId =&gt; {
-                        const field = document.getElementById(fieldId);
-                        if (field) {
-                            field.classList.add('is-invalid');
-                            const errorElement = document.getElementById(fieldId + '_error');
-                            if (errorElement) {
-                                if (fieldId === 'student_photo') {
-                                    errorElement.textContent = 'صورة الطالب مطلوبة';
-                                } else if (fieldId === 'birth_date') {
-                                    errorElement.textContent = 'تاريخ الميلاد مطلوب';
-                                } else if (fieldId === 'gender') {
-                                    errorElement.textContent = 'الجنس مطلوب';
-                                } else {
-                                    errorElement.textContent = 'هذا الحقل مطلوب';
-                                }
-                                errorElement.style.display = 'block';
-                            }
-                        }
-                    });
-                    
-                    // Mark optional fields
-                    const optionalFields = ['mobile', 'email'];
-                    optionalFields.forEach(fieldId =&gt; {
-                        const field = document.getElementById(fieldId);
-                        if (field) {
-                            field.classList.add('optional');
-                        }
-                    });
-                }
-
-                // Initialize validation on page load
-                initializeValidation();
-
-                // Real-time validation with input events
-                document.getElementById('fname').addEventListener('input', function() {
-                    validateRequired(this.value, 'الاسم الأول', this);
-                });
-
-                document.getElementById('lname').addEventListener('input', function() {
-                    validateRequired(this.value, 'اسم العائلة', this);
-                });
-
-                document.getElementById('student_national_id').addEventListener('input', function() {
-                    validateNationalId(this.value, 'الرقم القومي للطالب', this);
-                });
-
-                document.getElementById('parent_national_id').addEventListener('input', function() {
-                    validateNationalId(this.value, 'الرقم القومي لولي الأمر', this);
-                });
-
-                document.getElementById('mobile').addEventListener('input', function() {
-                    this.classList.add('optional'); // Mark as optional
-                    validateMobile(this.value, 'رقم هاتف الطالب', this, false);
-                });
-
-                document.getElementById('parent_mobile').addEventListener('input', function() {
-                    validateMobile(this.value, 'رقم هاتف ولي الأمر', this, true);
-                });
-
-                document.getElementById('parent_fullname').addEventListener('input', function() {
-                    validateRequired(this.value, 'اسم ولي الأمر', this);
-                });
-
-                document.getElementById('email').addEventListener('input', function() {
-                    this.classList.add('optional'); // Mark as optional
-                    if (this.value.trim() === '') {
-                        // Email is optional, so if empty, just remove validation classes
-                        this.classList.remove('is-invalid', 'is-valid');
-                        const errorElement = document.getElementById(this.id + '_error');
-                        if (errorElement) {
-                            errorElement.style.display = 'none';
-                        }
-                    } else {
-                        validateEmail(this.value, this);
-                    }
-                });
-
-                document.getElementById('birth_date').addEventListener('change', function() {
-                    validateRequired(this.value, 'تاريخ الميلاد', this);
-                });
-
-                document.getElementById('gender').addEventListener('change', function() {
-                    validateRequired(this.value, 'الجنس', this);
-                });
-
-                document.getElementById('student_photo').addEventListener('change', function() {
-                    validateFileRequired(this, 'صورة الطالب');
-                });
-
-                // Pricelist validation
-                const pricelistInputs = document.querySelectorAll('input[name="pricelist_id"]');
-                pricelistInputs.forEach(input =&gt; {
-                    input.addEventListener('change', function() {
-                        if (this.checked) {
-                            selectedPricelist = this.value;
-                            // Remove invalid state from all pricelist inputs
-                            pricelistInputs.forEach(inp =&gt; {
-                                inp.classList.remove('is-invalid');
-                                inp.classList.add('is-valid');
-                            });
-                            updatePriceCalculation();
-                        }
-                    });
-                });
-
-                // Activities validation
-                const activityCheckboxes = document.querySelectorAll('input[name="activity_ids[]"]');
-                activityCheckboxes.forEach(checkbox =&gt; {
-                    checkbox.addEventListener('change', function() {
-                        if (this.checked) {
-                            selectedActivities.push({
-                                id: this.value,
-                                name: this.nextElementSibling.textContent.trim()
-                            });
-                        } else {
-                            selectedActivities = selectedActivities.filter(activity =&gt; activity.id !== this.value);
-                        }
-                        
-                        // Validate activities selection
-                        if (selectedActivities.length > 0) {
-                            activityCheckboxes.forEach(inp =&gt; {
-                                inp.classList.remove('is-invalid');
-                                inp.classList.add('is-valid');
-                            });
-                        } else {
-                            activityCheckboxes.forEach(inp =&gt; {
-                                inp.classList.add('is-invalid');
-                                inp.classList.remove('is-valid');
-                            });
-                        }
-                        
-                        updatePriceCalculation();
-                    });
-                });
-
-                // Initialize pricelist and activities as invalid
-                pricelistInputs.forEach(input =&gt; {
-                    input.classList.add('is-invalid');
-                });
-                
-                activityCheckboxes.forEach(checkbox =&gt; {
-                    checkbox.classList.add('is-invalid');
-                });
-
-                // Show/hide disability description based on checkbox
-                const disabilityCheckbox = document.getElementById('is_disability');
-                const disabilityDescription = document.getElementById('disability_description');
-                if (disabilityCheckbox) {
-                    disabilityCheckbox.addEventListener('change', function() {
-                        disabilityDescription.classList.toggle('d-none', !this.checked);
-                    });
-                }
-
-                // Guardian checkbox change handler
-                const guardianCheckbox = document.getElementById('is_guardian');
-                if (guardianCheckbox) {
-                    guardianCheckbox.addEventListener('change', function() {
-                        isGuardian = this.checked;
-                        updatePriceCalculation();
-                    });
-                }
-
-                // Price calculation function
-                async function updatePriceCalculation() {
-                    const priceContainer = document.getElementById('price-calculation-container');
-                    
-                    if (selectedActivities.length === 0 || !selectedPricelist) {
-                        priceContainer.style.display = 'none';
-                        return;
-                    }
-
-                    priceContainer.style.display = 'block';
-                    const priceDetails = document.getElementById('price-details');
-                    const totalElement = document.getElementById('total-price');
-                    
-                    let totalPrice = ID_CARD_FEE + FORM_FEE; // Base ID card fee
-                    let priceHTML = '';
-
-                    // Add ID card fee
-                    priceHTML += `
-                    <div class="price-row">
-                        <span class="price-item">رسوم البطاقة</span>
-                        <span class="price-value">${ID_CARD_FEE} جنيه</span>
-                    </div>
-                    <div class="price-row">
-                        <span class="price-item">رسوم الاستمارة</span>
-                        <span class="price-value">${FORM_FEE} جنيه</span>
-                    </div>
-                    `;
-
-                    // Add guardian fee if selected
-                    if (isGuardian) {
-                        totalPrice += GUARDIAN_FEE;
-                        priceHTML += `
-                    <div class="price-row">
-                        <span class="price-item">رسوم المرافق</span>
-                        <span class="price-value">${GUARDIAN_FEE} جنيه</span>
-                    </div>
-                        `;
-                    }
-
-                    // Calculate activity prices
-                    for (const activity of selectedActivities) {
-                        try {
-                            const response = await fetch('/get_activity_price', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    jsonrpc: '2.0',
-                                    method: 'call',
-                                    params: {
-                                        activity_id: activity.id,
-                                        pricelist_id: selectedPricelist
-                                    }
-                                })
-                            });
-                            
-                            const data = await response.json();
-                            const activityPrice = data.result?.price || 0;
-                            totalPrice += activityPrice;
-                            
-                            priceHTML += `
-                    <div class="price-row">
-                        <span class="price-item">${activity.name}</span>
-                        <span class="price-value">${activityPrice} جنيه</span>
-                    </div>
-                            `;
-                        } catch (error) {
-                            console.error('Error fetching activity price:', error);
-                            priceHTML += `
-                    <div class="price-row">
-                        <span class="price-item">${activity.name}</span>
-                        <span class="price-value">-- جنيه</span>
-                    </div>
-                            `;
-                        }
-                    }
-
-                    priceDetails.innerHTML = priceHTML;
-                    totalElement.textContent = `${totalPrice} جنيه`;
-                }
-
-                // Function to calculate and update progress
-
-                // Function to check if form is valid
-                function isFormValid() {
-                    const invalidFields = document.querySelectorAll('.is-invalid:not(.optional)');
-                    const checkData = document.getElementById('check_data').checked;
-                    const hasActivities = selectedActivities.length &gt; 0;
-                    const hasPricelist = selectedPricelist !== null;
-                    
-                    return invalidFields.length === 0 &amp;&amp; checkData &amp;&amp; hasActivities &amp;&amp; hasPricelist;
-                }
-
-                // Update submit button state
-                function updateSubmitButton() {
-                    const submitButton = document.getElementById('submit_registration');
-                    if (isFormValid()) {
-                        submitButton.disabled = false;
-                        submitButton.classList.remove('btn-secondary');
-                        submitButton.classList.add('btn-primary');
-                        submitButton.textContent = 'تسجيل الآن';
-                    } else {
-                        submitButton.disabled = true;
-                        submitButton.classList.remove('btn-primary');
-                        submitButton.classList.add('btn-secondary');
-                        submitButton.textContent = 'يرجى إكمال البيانات المطلوبة';
-                    }
-                    
-                    // Update progress
-                }
-
-                // Agreement checkbox validation
-                const checkDataCheckbox = document.getElementById('check_data');
-                checkDataCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        this.classList.remove('is-invalid');
-                        this.classList.add('is-valid');
-                    } else {
-                        this.classList.add('is-invalid');
-                        this.classList.remove('is-valid');
-                    }
-                    updateSubmitButton();
-                });
-
-                // Initialize agreement checkbox as invalid
-                checkDataCheckbox.classList.add('is-invalid');
-
-                // Add event listeners to all form fields to update submit button
-                const allFormFields = document.querySelectorAll('input, select, textarea');
-                allFormFields.forEach(field =&gt; {
-                    ['input', 'change', 'blur'].forEach(eventType =&gt; {
-                        field.addEventListener(eventType, updateSubmitButton);
-                    });
-                });
-
-                // Initial submit button state
-                updateSubmitButton();
-
-                // Form validation and submission
-                const form = document.querySelector('#registration_create_form form');
-                if (form) {
-                    form.addEventListener('submit', function(e) {
-                        if (!isFormValid()) {
-                            e.preventDefault();
-                            alert('يرجى إكمال جميع البيانات المطلوبة وتصحيح الأخطاء');
-                            return false;
-                        }
-                        
-                        document.getElementById('loader').style.display = 'flex';
-                        return true;
-                    });
-                }
+    function toggleSectionsByMemberType() {
+        console.log('toggleSectionsByMemberType called, memberType:', memberType);
+        
+        // Use more specific selectors and add elements manually if needed
+        const pricelistSection = document.querySelector('.regular-only');
+        const academicNotice = document.querySelector('.academic-only');
+        
+        // Also select by parent containers
+        const pricelistContainer = document.getElementById('pricelist-container');
+        const activitiesContainer = document.getElementById('activities-container');
+        
+        console.log('Pricelist section found:', !!pricelistSection);
+        console.log('Academic notice found:', !!academicNotice);
+        
+        if (memberType === 'academic') {
+            // Hide regular sections
+            if (pricelistSection) {
+                pricelistSection.style.display = 'none';
+            }
+            if (pricelistContainer) {
+                pricelistContainer.style.display = 'none';
+            }
+            if (activitiesContainer) {
+                activitiesContainer.style.display = 'none';
+            }
+            
+            // Show academic notice
+            if (academicNotice) {
+                academicNotice.style.display = 'block';
+                academicNotice.classList.remove('section-hidden');
+            }
+            
+            // Clear selections
+            selectedActivities = [];
+            selectedPricelist = null; 
+            
+            document.querySelectorAll('input[name="activity_ids[]"]').forEach(function(cb) {
+                cb.checked = false;
+                cb.classList.remove('is-invalid', 'is-valid');
+            }); 
+            
+            document.querySelectorAll('input[name="pricelist_id"]').forEach(function(rb) {
+                rb.checked = false;
+                rb.classList.remove('is-invalid', 'is-valid');
             });
+            
+            console.log('Academic mode: sections hidden');
+            
+        } else {
+            // Show regular sections
+            if (pricelistSection) {
+                pricelistSection.style.display = 'block';
+            }
+            if (pricelistContainer) {
+                pricelistContainer.style.display = 'block';
+            }
+            if (activitiesContainer) {
+                activitiesContainer.style.display = 'block';
+            }
+            
+            // Hide academic notice
+            if (academicNotice) {
+                academicNotice.style.display = 'none';
+                academicNotice.classList.add('section-hidden');
+            }
+            
+            console.log('Regular mode: sections shown');
+        }
+    }
+
+    function updateValidationRules() {
+        const activityCheckboxes = document.querySelectorAll('input[name="activity_ids[]"]');
+        const pricelistInputs = document.querySelectorAll('input[name="pricelist_id"]');
+        
+        if (memberType === 'academic') {
+            // Remove validation for academic members
+            activityCheckboxes.forEach(function(cb) {
+                cb.classList.remove('is-invalid', 'is-valid');
+            });
+            pricelistInputs.forEach(function(rb) {
+                rb.classList.remove('is-invalid', 'is-valid');
+            });
+        } else {
+            // Re-apply validation for regular members
+            if (selectedActivities.length === 0) {
+                activityCheckboxes.forEach(function(cb) {
+                    cb.classList.add('is-invalid');
+                    cb.classList.remove('is-valid');
+                });
+            }
+            if (!selectedPricelist) {
+                pricelistInputs.forEach(function(rb) {
+                    rb.classList.add('is-invalid');
+                    rb.classList.remove('is-valid');
+                });
+            }
+        }
+        updateSubmitButton(); // Update submit button when validation rules change
+    }
+
+    // Validation functions
+    function validateNationalId(nationalId, fieldName, fieldElement) {
+        const errorElement = document.getElementById(fieldElement.id + '_error');
+        if (!nationalId) {
+            showError(errorElement, fieldName + ' مطلوب', fieldElement);
+            return false;
+        }
+        if (!nationalId.match(/^\d{14}$/)) {
+            showError(errorElement, fieldName + ' يجب أن يكون 14 رقمًا', fieldElement);
+            return false;
+        }
+        hideError(errorElement, fieldElement);
+        return true;
+    }
+
+    function validateMobile(mobile, fieldName, fieldElement, required) {
+        const errorElement = document.getElementById(fieldElement.id + '_error');
+        if (!mobile && required) {
+            showError(errorElement, fieldName + ' مطلوب', fieldElement);
+            return false;
+        }
+        if (mobile && !mobile.match(/^0\d{10}$/)) {
+            showError(errorElement, 'رقم الهاتف يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا', fieldElement);
+            return false;
+        }
+        hideError(errorElement, fieldElement);
+        return true;
+    }
+
+    function validateEmail(email, fieldElement) {
+        const errorElement = document.getElementById(fieldElement.id + '_error');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && !emailRegex.test(email)) {
+            showError(errorElement, 'البريد الإلكتروني غير صحيح', fieldElement);
+            return false;
+        }
+        hideError(errorElement, fieldElement);
+        return true;
+    }
+
+    function validateRequired(value, fieldName, fieldElement) {
+        const errorElement = document.getElementById(fieldElement.id + '_error');
+        if (!value || value.trim() === '') {
+            showError(errorElement, fieldName + ' مطلوب', fieldElement);
+            return false;
+        }
+        hideError(errorElement, fieldElement);
+        return true;
+    }
+
+    function validateFileRequired(fileInput, fieldName) {
+        const errorElement = document.getElementById(fileInput.id + '_error');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showError(errorElement, fieldName + ' مطلوبة', fileInput);
+            return false;
+        }
+        hideError(errorElement, fileInput);
+        return true;
+    }
+
+    function showError(errorElement, message, fieldElement) {
+        if (errorElement && fieldElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            fieldElement.classList.add('is-invalid');
+            fieldElement.classList.remove('is-valid');
+        }
+    }
+
+    function hideError(errorElement, fieldElement) {
+        if (errorElement && fieldElement) {
+            errorElement.style.display = 'none';
+            fieldElement.classList.remove('is-invalid');
+            fieldElement.classList.add('is-valid');
+        }
+    }
+
+    // Initialize all fields as invalid (red) on page load
+    function initializeValidation() {
+        const requiredFields = [
+            'fname', 'lname', 'student_national_id', 'birth_date', 
+            'gender', 'parent_fullname', 'parent_national_id', 
+            'parent_mobile', 'student_photo'
+        ];
+        
+        requiredFields.forEach(function(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.classList.add('is-invalid');
+                const errorElement = document.getElementById(fieldId + '_error');
+                if (errorElement) {
+                    if (fieldId === 'student_photo') {
+                        errorElement.textContent = 'صورة الطالب مطلوبة';
+                    } else if (fieldId === 'birth_date') {
+                        errorElement.textContent = 'تاريخ الميلاد مطلوب';
+                    } else if (fieldId === 'gender') {
+                        errorElement.textContent = 'الجنس مطلوب';
+                    } else {
+                        errorElement.textContent = 'هذا الحقل مطلوب';
+                    }
+                    errorElement.style.display = 'block';
+                }
+            }
+        });
+        
+        // Mark optional fields
+        const optionalFields = ['mobile', 'email'];
+        optionalFields.forEach(function(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.classList.add('optional');
+            }
+        });
+
+        // Initialize member type validation - member type starts valid since regular is default
+        const memberTypeInputs = document.querySelectorAll('input[name="member_type"]');
+        memberTypeInputs.forEach(function(input) {
+            input.classList.add('is-valid');
+        });
+
+        // Initialize pricelist and activities as invalid for regular members (default)
+        const pricelistInputs = document.querySelectorAll('input[name="pricelist_id"]');
+        const activityCheckboxes = document.querySelectorAll('input[name="activity_ids[]"]');
+        
+        pricelistInputs.forEach(function(input) {
+            input.classList.add('is-invalid');
+        });
+        
+        activityCheckboxes.forEach(function(checkbox) {
+            checkbox.classList.add('is-invalid');
+        });
+
+        // Initialize agreement checkbox as invalid
+        const checkDataCheckbox = document.getElementById('check_data');
+        if (checkDataCheckbox) {
+            checkDataCheckbox.classList.add('is-invalid');
+        }
+    }
+
+    // Initialize validation on page load - MUST BE FIRST
+    console.log('Initializing validation...');
+    initializeValidation();
+    
+    console.log('Setting up member type handlers...');
+    // Initialize member type sections (default is regular)
+    toggleSectionsByMemberType();
+    updatePriceCalculation(); // Show initial price calculation
+    
+    console.log('Validation initialization complete.');
+
+    // Real-time validation with input events
+    const fnameField = document.getElementById('fname');
+    if (fnameField) {
+        fnameField.addEventListener('input', function() {
+            validateRequired(this.value, 'الاسم الأول', this);
+        });
+    }
+
+    const lnameField = document.getElementById('lname');
+    if (lnameField) {
+        lnameField.addEventListener('input', function() {
+            validateRequired(this.value, 'اسم العائلة', this);
+        });
+    }
+
+    const studentNationalIdField = document.getElementById('student_national_id');
+    if (studentNationalIdField) {
+        studentNationalIdField.addEventListener('input', function() {
+            validateNationalId(this.value, 'الرقم القومي للطالب', this);
+        });
+    }
+
+    const parentNationalIdField = document.getElementById('parent_national_id');
+    if (parentNationalIdField) {
+        parentNationalIdField.addEventListener('input', function() {
+            validateNationalId(this.value, 'الرقم القومي لولي الأمر', this);
+        });
+    }
+
+    const mobileField = document.getElementById('mobile');
+    if (mobileField) {
+        mobileField.addEventListener('input', function() {
+            this.classList.add('optional'); // Mark as optional
+            validateMobile(this.value, 'رقم هاتف الطالب', this, false);
+        });
+    }
+
+    const parentMobileField = document.getElementById('parent_mobile');
+    if (parentMobileField) {
+        parentMobileField.addEventListener('input', function() {
+            validateMobile(this.value, 'رقم هاتف ولي الأمر', this, true);
+        });
+    }
+
+    const parentFullnameField = document.getElementById('parent_fullname');
+    if (parentFullnameField) {
+        parentFullnameField.addEventListener('input', function() {
+            validateRequired(this.value, 'اسم ولي الأمر', this);
+        });
+    }
+
+    const emailField = document.getElementById('email');
+    if (emailField) {
+        emailField.addEventListener('input', function() {
+            this.classList.add('optional'); // Mark as optional
+            if (this.value.trim() === '') {
+                // Email is optional, so if empty, just remove validation classes
+                this.classList.remove('is-invalid', 'is-valid');
+                const errorElement = document.getElementById(this.id + '_error');
+                if (errorElement) {
+                    errorElement.style.display = 'none';
+                }
+            } else {
+                validateEmail(this.value, this);
+            }
+        });
+    }
+
+    const birthDateField = document.getElementById('birth_date');
+    if (birthDateField) {
+        birthDateField.addEventListener('change', function() {
+            validateRequired(this.value, 'تاريخ الميلاد', this);
+        });
+    }
+
+    const genderField = document.getElementById('gender');
+    if (genderField) {
+        genderField.addEventListener('change', function() {
+            validateRequired(this.value, 'الجنس', this);
+        });
+    }
+
+    const studentPhotoField = document.getElementById('student_photo');
+    if (studentPhotoField) {
+        studentPhotoField.addEventListener('change', function() {
+            validateFileRequired(this, 'صورة الطالب');
+        });
+    }
+
+    // Pricelist validation
+    const pricelistInputs = document.querySelectorAll('input[name="pricelist_id"]');
+    pricelistInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            if (this.checked) {
+                selectedPricelist = this.value;
+                pricelistInputs.forEach(function(inp) {
+                    inp.classList.remove('is-invalid');
+                    inp.classList.add('is-valid');
+                });
+                updatePriceCalculation();
+            }
+        });
+    });
+
+    // Activities validation
+    const activityCheckboxes = document.querySelectorAll('input[name="activity_ids[]"]');
+    activityCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectedActivities.push({
+                    id: this.value,
+                    name: this.nextElementSibling.textContent.trim()
+                });
+            } else {
+                selectedActivities = selectedActivities.filter(function(activity) {
+                    return activity.id !== this.value;
+                }.bind(this));
+            }
+            
+            if (memberType === 'regular') {
+                if (selectedActivities.length > 0) {
+                    activityCheckboxes.forEach(function(inp) {
+                        inp.classList.remove('is-invalid');
+                        inp.classList.add('is-valid');
+                    });
+                } else {
+                    activityCheckboxes.forEach(function(inp) {
+                        inp.classList.add('is-invalid');
+                        inp.classList.remove('is-valid');
+                    });
+                }
+            }
+            
+            updatePriceCalculation();
+        });
+    });
+
+    // Show/hide disability description based on checkbox
+    const disabilityCheckbox = document.getElementById('is_disability');
+    const disabilityDescription = document.getElementById('disability_description');
+    if (disabilityCheckbox && disabilityDescription) {
+        disabilityCheckbox.addEventListener('change', function() {
+            disabilityDescription.classList.toggle('d-none', !this.checked);
+        });
+    }
+
+    // Guardian checkbox change handler
+    const guardianCheckbox = document.getElementById('is_guardian');
+    if (guardianCheckbox) {
+        guardianCheckbox.addEventListener('change', function() {
+            isGuardian = this.checked;
+            updatePriceCalculation();
+        });
+    }
+
+    // Price calculation function
+    function updatePriceCalculation() {
+        const priceContainer = document.getElementById('price-calculation-container');
+        if (!priceContainer) return;
+        
+        if (memberType === 'academic' || selectedActivities.length === 0) {
+            priceContainer.style.display = 'block';
+            const priceDetails = document.getElementById('price-details');
+            const totalElement = document.getElementById('total-price');
+            
+            if (!priceDetails || !totalElement) return;
+            
+            let totalPrice = ID_CARD_FEE; // Only ID card fee for academic
+            let priceHTML = '';
+
+            priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
+
+            // Add form fee only for regular members
+            if (memberType === 'regular') {
+                totalPrice += FORM_FEE;
+                priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
+            }
+
+            // Add guardian fee if selected
+            if (isGuardian) {
+                totalPrice += GUARDIAN_FEE;
+                priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
+            }
+
+            priceDetails.innerHTML = priceHTML;
+            totalElement.textContent = totalPrice + ' جنيه';
+            return;
+        }
+
+        // Regular member with activities
+        if (selectedActivities.length === 0 || !selectedPricelist) {
+            priceContainer.style.display = 'none';
+            return;
+        }
+
+        priceContainer.style.display = 'block';
+        const priceDetails = document.getElementById('price-details');
+        const totalElement = document.getElementById('total-price');
+        
+        if (!priceDetails || !totalElement) return;
+        
+        let totalPrice = ID_CARD_FEE + FORM_FEE; // Base fees for regular
+        let priceHTML = '';
+
+        // Add ID card fee
+        priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
+        priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
+
+        // Add guardian fee if selected
+        if (isGuardian) {
+            totalPrice += GUARDIAN_FEE;
+            priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
+        }
+
+        // Calculate activity prices - using Promise.all for async operations
+        Promise.all(selectedActivities.map(function(activity) {
+            return fetch('/get_activity_price', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'call',
+                    params: {
+                        activity_id: activity.id,
+                        pricelist_id: selectedPricelist
+                    }
+                })
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                const activityPrice = data.result ? data.result.price : 0;
+                return {
+                    name: activity.name,
+                    price: activityPrice || 0
+                };
+            })
+            .catch(function(error) {
+                console.error('Error fetching activity price:', error);
+                return {
+                    name: activity.name,
+                    price: 0
+                };
+            });
+        })).then(function(activityPrices) {
+            activityPrices.forEach(function(item) {
+                totalPrice += item.price;
+                priceHTML += '<div class="price-row"><span class="price-item">' + item.name + '</span><span class="price-value">' + item.price + ' جنيه</span></div>';
+            });
+            
+            priceDetails.innerHTML = priceHTML;
+            totalElement.textContent = totalPrice + ' جنيه';
+        });
+    }
+
+    // Function to check if form is valid
+    function isFormValid() {
+        const invalidFields = document.querySelectorAll('.is-invalid:not(.optional)');
+        const checkDataCheckbox = document.getElementById('check_data');
+        const checkData = checkDataCheckbox ? checkDataCheckbox.checked : false;
+        
+        // For academic members, don't require activities or pricelist
+        if (memberType === 'academic') {
+            return invalidFields.length === 0 && checkData;
+        }
+        
+        const hasActivities = selectedActivities.length > 0;
+        const hasPricelist = selectedPricelist !== null;
+        
+        return invalidFields.length === 0 && checkData && hasActivities && hasPricelist;
+    }
+
+    // Update submit button state
+    function updateSubmitButton() {
+        const submitButton = document.getElementById('submit_registration');
+        if (!submitButton) return;
+        
+        if (isFormValid()) {
+            submitButton.disabled = false;
+            submitButton.classList.remove('btn-secondary');
+            submitButton.classList.add('btn-primary');
+            submitButton.textContent = 'تسجيل الآن';
+        } else {
+            submitButton.disabled = true;
+            submitButton.classList.remove('btn-primary');
+            submitButton.classList.add('btn-secondary');
+            submitButton.textContent = 'يرجى إكمال البيانات المطلوبة';
+        }
+    }
+
+    // Agreement checkbox validation
+    const checkDataCheckbox = document.getElementById('check_data');
+    if (checkDataCheckbox) {
+        checkDataCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.add('is-invalid');
+                this.classList.remove('is-valid');
+            }
+            updateSubmitButton();
+        });
+    }
+
+    // Add event listeners to all form fields to update submit button
+    const allFormFields = document.querySelectorAll('input, select, textarea');
+    allFormFields.forEach(function(field) {
+        ['input', 'change', 'blur'].forEach(function(eventType) {
+            field.addEventListener(eventType, updateSubmitButton);
+        });
+    });
+
+    // Initial submit button state
+    updateSubmitButton();
+
+    // Form validation and submission
+    const form = document.querySelector('#registration_create_form form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!isFormValid()) {
+                e.preventDefault();
+                alert('يرجى إكمال جميع البيانات المطلوبة وتصحيح الأخطاء');
+                return false;
+            }
+            
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.display = 'flex';
+            }
+            return true;
+        });
+    }
+
+
+        const academicMemberRadio = document.getElementById('academic_member');
+    const regularMemberRadio = document.getElementById('regular_member');
+    const academicSubtypes = document.getElementById('academic_subtypes');
+    const hiddenMemberType = document.getElementById('hidden_member_type');
+    const hiddenAcademicSubtype = document.getElementById('hidden_academic_subtype');
+    
+    // Academic subtype radio buttons
+    const academicSubtypeRadios = document.querySelectorAll('input[name="academic_subtype"]');
+    
+    // Show/hide academic subtypes
+    function toggleAcademicSubtypes() {
+        if (academicMemberRadio && academicMemberRadio.checked) {
+            if (academicSubtypes) {
+                academicSubtypes.style.display = 'block';
+                // Make academic subtype selection required
+                academicSubtypeRadios.forEach(function(radio) {
+                    radio.required = true;
+                });
+            }
+        } else {
+            if (academicSubtypes) {
+                academicSubtypes.style.display = 'none';
+                // Clear academic subtype selection
+                academicSubtypeRadios.forEach(function(radio) {
+                    radio.checked = false;
+                    radio.required = false;
+                });
+                if (hiddenAcademicSubtype) {
+                    hiddenAcademicSubtype.value = '';
+                }
+            }
+        }
+    }
+    
+    // Handle member type changes
+    if (academicMemberRadio) {
+        academicMemberRadio.addEventListener('change', function() {
+            if (this.checked) {
+                if (hiddenMemberType) hiddenMemberType.value = 'academic';
+                toggleAcademicSubtypes();
+            }
+        });
+    }
+    
+    if (regularMemberRadio) {
+        regularMemberRadio.addEventListener('change', function() {
+            if (this.checked) {
+                if (hiddenMemberType) hiddenMemberType.value = 'regular';
+                if (hiddenAcademicSubtype) hiddenAcademicSubtype.value = '';
+                toggleAcademicSubtypes();
+            }
+        });
+    }
+    
+    // Handle academic subtype changes
+    academicSubtypeRadios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (this.checked && hiddenAcademicSubtype) {
+                hiddenAcademicSubtype.value = this.value;
+                console.log('Academic subtype selected:', this.value);
+            }
+        });
+    });
+    
+    // Initialize
+    toggleAcademicSubtypes();
+
+
+
+
+
+
+
+});
+//]]>
                 </script>
 
                 <div class="oe_structure">
@@ -1284,17 +1652,90 @@
 
                         <h6>البيانات الشخصية</h6>
 
-                        <!-- Form Progress Indicator -->
-                        <!-- <div class="form-progress">
-                            <div class="mb-2">
-                                <span id="progress-text">مكتمل: 0%</span>
-                            </div>
-                            <div class="progress" style="height: 10px;">
-                                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                        </div> -->
-
                         <form class="row g-3" role="form" action="/registration/create" method="post" enctype="multipart/form-data">
+
+                            <!-- Member Type Selection - MOVED INSIDE FORM -->
+                            <div class="col-12">
+
+                                <hr/>
+                                <h6>نوع العضوية</h6>
+                                <div class="col-md-12">
+                                    <!-- Member Type Selection with Enhanced Styling -->
+                                    <div class="member-type-container" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 2px solid #dee2e6; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+
+                                        <!-- Regular Member Option -->
+                                        <div class="member-type-option" style="margin-bottom: 20px;">
+                                            <div class="form-check" style="background: white; border: 2px solid #007bff; border-radius: 8px; padding: 15px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,123,255,0.1);">
+                                                <input type="radio" id="regular_member" name="member_type" value="regular" class="form-check-input" required="1" style="margin-top: 8px; transform: scale(1.2);"/>
+                                                <label for="regular_member" class="form-check-label" style="font-size: 16px; font-weight: 600; color: #007bff; cursor: pointer; display: block; margin-left: 25px;">
+                                                    <i class="fa fa-running" style="margin-left: 8px;"></i>
+                    عضو رياضي (اختيار الأنشطة الرياضية)
+                                                    <small style="display: block; color: #6c757d; font-weight: normal; margin-top: 5px;">
+                        يمكنك الاشتراك في الأنشطة الرياضية المختلفة والاستفادة من جميع المرافق الرياضية
+                                                    </small>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Academic Member Option -->
+                                        <div class="member-type-option">
+                                            <div class="form-check" style="background: white; border: 2px solid #17a2b8; border-radius: 8px; padding: 15px; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(23,162,184,0.1);">
+                                                <input type="radio" id="academic_member" name="member_type" value="academic" class="form-check-input" required="1" style="margin-top: 8px; transform: scale(1.2);"/>
+                                                <label for="academic_member" class="form-check-label" style="font-size: 16px; font-weight: 600; color: #17a2b8; cursor: pointer; display: block; margin-left: 25px;">
+                                                    <i class="fa fa-graduation-cap" style="margin-left: 8px;"></i>
+                    عضو أكاديمي (بطاقة هوية فقط - بدون أنشطة رياضية)
+                                                    <small style="display: block; color: #6c757d; font-weight: normal; margin-top: 5px;">
+                        بطاقة هوية رسمية للكلية للأغراض الأكاديمية فقط
+                                                    </small>
+                                                </label>
+                                            </div>
+
+                                            <!-- Academic Sub-types (Hidden by default) -->
+                                            <div id="academic_subtypes" class="academic-subtypes" style="display: none; margin-top: 15px; margin-right: 30px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px;">
+                                                <h6 style="color: #17a2b8; margin-bottom: 15px; font-size: 14px;">
+                                                    <i class="fa fa-list-ul" style="margin-left: 8px;"></i>
+                    اختر نوع العضوية الأكاديمية:
+                                                </h6>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check academic-subtype-option" style="background: white; border: 1px solid #28a745; border-radius: 6px; padding: 12px; margin-bottom: 10px;">
+                                                            <input type="radio" id="academic_7star" name="academic_subtype" value="7star" class="form-check-input" style="transform: scale(1.1);"/>
+                                                            <label for="academic_7star" class="form-check-label" style="font-weight: 500; color: #28a745; cursor: pointer; margin-left: 20px;">
+                                                                <i class="fa fa-star" style="margin-left: 5px;"></i>
+                                7 ستار
+
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-md-6">
+                                                        <div class="form-check academic-subtype-option" style="background: white; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; margin-bottom: 10px;">
+                                                            <input type="radio" id="academic_regular" name="academic_subtype" value="academic" class="form-check-input" style="transform: scale(1.1);"/>
+                                                            <label for="academic_regular" class="form-check-label" style="font-weight: 500; color: #ffc107; cursor: pointer; margin-left: 20px;">
+                                                                <i class="fa fa-book" style="margin-left: 5px;"></i>
+                                أكاديمية
+
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Hidden input for form submission -->
+                                    <input type="hidden" name="member_type" id="hidden_member_type" value=""/>
+                                    <input type="hidden" name="academic_subtype" id="hidden_academic_subtype" value=""/>
+                                </div>
+
+                            </div>
+
+                            <hr/>
+
+                            <div class="col-12">
+                                <h6>البيانات الشخصية</h6>
+                            </div>
                             <div class="col-md-6">
                                 <label for="fname" class="form-label required-field">الاسم الأول</label>
                                 <input required="1" type="text" name="fname" class="form-control" id="fname" placeholder="أدخل الاسم الأول"/>
@@ -1385,43 +1826,60 @@
                             </div>
                             <hr/>
 
-                            <h6>جهة الانتماء</h6>
-                            <div class="col-md-6">
-                                <t t-set="field_name" t-value="'pricelist_id'"/>
-                                <t t-foreach="pricelists" t-as="pricelist">
-                                    <div class="form-check">
-                                        <!-- Remove any checked attribute - all start unchecked -->
-                                        <input type="radio" t-att-id="'pricelist_' + str(pricelist.id)" t-att-name="field_name" t-att-value="pricelist.id" class="form-check-input" required="1"/>
-                                        <label t-att-for="'pricelist_' + str(pricelist.id)" class="form-check-label">
-                                            <t t-esc="pricelist.name"/>
-                                        </label>
-                                    </div>
-                                </t>
-                            </div>
-                            <hr/>
-
-                            <h6>تفاصيل الأنشطة</h6>
-                            <div id="activity-checkbox-group">
-                                <div class="row">
-                                    <t t-foreach="activities_by_category.items()" t-as="cat">
-                                        <div class="col-12 mb-3">
-                                            <strong>
-                                                <t t-esc="cat[0]"/>
-                                            </strong>
-                                            <div class="row">
-                                                <t t-foreach="cat[1]" t-as="activity">
-                                                    <div class="col-sm-6 col-md-3">
-                                                        <div class="form-check">
-                                                            <input type="checkbox" t-att-id="'activity_' + str(activity.id)" t-att-name="'activity_ids[]'" t-att-value="activity.id" class="form-check-input"/>
-                                                            <label class="form-check-label" t-att-for="'activity_' + str(activity.id)">
-                                                                <t t-esc="activity.display_name"/>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </t>
+                            <div class="regular-only" id="pricelist-container">
+                                <h6>جهة الانتماء</h6>
+                                <div class="col-md-6">
+                                    <t t-set="field_name" t-value="'pricelist_id'"/>
+                                    <t t-foreach="pricelists" t-as="pricelist">
+                                        <t t-if="pricelist.name != 'academic'">
+                                            <div class="form-check">
+                                                <input type="radio" t-att-id="'pricelist_' + str(pricelist.id)" t-att-name="field_name" t-att-value="pricelist.id" class="form-check-input"/>
+                                                <label t-att-for="'pricelist_' + str(pricelist.id)" class="form-check-label">
+                                                    <t t-esc="pricelist.name"/>
+                                                </label>
                                             </div>
-                                        </div>
+                                        </t>
                                     </t>
+                                </div>
+                                <hr/>
+
+                                <h6>تفاصيل الأنشطة</h6>
+                                <div id="activities-container">
+                                    <div id="activity-checkbox-group">
+                                        <div class="row">
+                                            <t t-foreach="activities_by_category.items()" t-as="cat">
+                                                <div class="col-12 mb-3">
+                                                    <strong>
+                                                        <t t-esc="cat[0]"/>
+                                                    </strong>
+                                                    <div class="row">
+                                                        <t t-foreach="cat[1]" t-as="activity">
+                                                            <div class="col-sm-6 col-md-3">
+                                                                <div class="form-check">
+                                                                    <input type="checkbox" t-att-id="'activity_' + str(activity.id)" t-att-name="'activity_ids[]'" t-att-value="activity.id" class="form-check-input"/>
+                                                                    <label class="form-check-label" t-att-for="'activity_' + str(activity.id)">
+                                                                        <t t-esc="activity.display_name"/>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </t>
+                                                    </div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Academic Member Notice -->
+                            <div class="academic-only section-hidden">
+                                <div class="alert alert-info" role="alert" style="border: 2px solid #17a2b8; border-radius: 0.5rem; background-color: #d1ecf1; color: #0c5460;">
+                                    <h6 style="color: #0c5460; font-weight: bold; margin-bottom: 1rem;">
+                                        🎓 عضوية أكاديمية
+                                    </h6>
+                                    <p style="margin-bottom: 0; line-height: 1.6;">
+                                        تم اختيار العضوية الأكاديمية. هذه العضوية تشمل فقط البطاقة والوصول للمرافق الأساسية بدون أنشطة رياضية.
+                                    </p>
                                 </div>
                             </div>
 
@@ -1444,14 +1902,17 @@
                                     <h6 style="color: #856404; font-weight: bold; margin-bottom: 1rem;">
            ⚠️ ملحوظة هامة جداً
                                     </h6>
-                                    <div style="margin-bottom: 0.8rem; font-weight: 500; line-height: 1.6;">
+                                    <div class="regular-only" style="margin-bottom: 0.8rem; font-weight: 500; line-height: 1.6;">
            🆔                                        <strong>لن يسمح بدخول أي مشترك أو ولي أمر من أبواب الكلية بدون الكارنيه الرسمي للكلية تحت أي ظرف.</strong>
                                     </div>
-                                    <div style="font-weight: 500; line-height: 1.6;">
+                                    <div class="regular-only" style="margin-bottom: 0.8rem; font-weight: 500; line-height: 1.6;">
            💰                                        <strong>في حالة وجود أكثر من طفل مشترك، اختر مرافق في تسجيل طفل واحد فقط حتى لا تدفع كارنيه مرافق أكثر من مرة.</strong>
                                     </div>
-                                    <div style="margin-top: 0.8rem; font-weight: 500; line-height: 1.6;">
+                                    <div style="font-weight: 500; line-height: 1.6;">
            📷                                        <strong>يرجى رفع صورة شخصية بمقاس 4×6 سم بجودة عالية وخلفية بيضاء.</strong>
+                                    </div>
+                                    <div class="academic-only section-hidden" style="margin-top: 0.8rem; font-weight: 500; line-height: 1.6; color: #0c5460;">
+           🎓                                        <strong>العضوية الأكاديمية تشمل فقط البطاقة والوصول للمرافق الأساسية.</strong>
                                     </div>
                                 </div>
                             </div>
@@ -1474,6 +1935,8 @@
             </div>
         </t>
     </template>
+
+
 
     <!-- Rest of the templates remain the same -->
     <template id="booking" name="Student - Ground Booking">
