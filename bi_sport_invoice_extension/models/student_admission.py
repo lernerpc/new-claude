@@ -8,40 +8,22 @@ _logger = logging.getLogger(__name__)
 class StudentAdmission(models.Model):
     _inherit = 'student.admission'
 
-    # EMERGENCY FIX: Remove the One2many field and use a computed field instead
-    # invoice_ids = fields.One2many('account.move', 'student_admission_id', string='Invoices')
-    invoice_ids = fields.Many2many('account.move', compute='_compute_invoice_ids', string='Invoices')
-    invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count')
-
-    @api.depends()  # No dependencies to force recomputation every time
-    def _compute_invoice_ids(self):
-        """Compute invoice IDs by searching for invoices linked to this admission"""
-        for record in self:
-            invoices = self.env['account.move'].search([
-                ('student_admission_id', '=', record.id),
-                ('move_type', '=', 'out_invoice')
-            ])
-            record.invoice_ids = invoices
-
+    # Override the invoice_ids field to use proper One2many relationship
+    invoice_ids = fields.One2many('account.move', 'student_admission_id', string='Invoices')
+    
+    # Override invoice_count to use the One2many relationship
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
-        """Compute invoice count"""
+        """Compute invoice count using the One2many relationship"""
         for record in self:
-            # Force recompute invoice_ids first
-            record._compute_invoice_ids()
             record.invoice_count = len(record.invoice_ids)
 
     def action_view_invoice(self):
         """Action to view invoices related to this student admission"""
         self.ensure_one()
         
-        # EMERGENCY FIX: Search directly for invoices instead of using the field
-        invoices = self.env['account.move'].search([
-            ('student_admission_id', '=', self.id),
-            ('move_type', '=', 'out_invoice')
-        ])
-        
-        _logger.info(f"🚨 EMERGENCY: Found {len(invoices)} invoices for admission {self.name}: {invoices.ids}")
+        # Use the One2many relationship directly
+        invoices = self.invoice_ids
         
         action = {
             'name': _('Student Invoices'),
@@ -53,6 +35,7 @@ class StudentAdmission(models.Model):
             'context': {
                 'default_move_type': 'out_invoice',
                 'default_partner_id': self.student_id.id,
+                'search_default_open': 1,
             }
         }
         
@@ -111,11 +94,11 @@ class StudentAdmission(models.Model):
                     'ref': f"Invoice for {fee.name} - {self.name}",
                     'journal_id': sale_journals.id,
                     'partner_id': self.parent_id.id if self.parent_id else self.student_id.id,
-                    'invoice_date': today,  # ✅ Use today to match sequence numbering
-                    'invoice_date_due': fee.start_date,  # ✅ Use membership fee start date for due date
+                    'invoice_date': today,  # Use today to match sequence numbering
+                    'invoice_date_due': fee.start_date,  # Use membership fee start date for due date
                     'currency_id': self.student_id.currency_id.id or self.env.company.currency_id.id,
                     'company_id': self.env.company.id,
-                    'student_admission_id': self.id,  # ✅ Set the inverse relationship
+                    'student_admission_id': self.id,  # Set the inverse relationship
                     # Don't set name here - let Odoo handle it in create()
                 }
                 _logger.debug("Invoice header values for fee %s: %s", fee.name, invoice_vals)
@@ -138,7 +121,7 @@ class StudentAdmission(models.Model):
                         product=sport_product,
                         quantity=1.0,
                         partner=invoice_vals['partner_id'],
-                        date=today,  # ✅ Use today for pricing consistency
+                        date=today,  # Use today for pricing consistency
                     )
                     final_price_unit_sport = price if price else sport_product.lst_price
                     _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
@@ -165,7 +148,7 @@ class StudentAdmission(models.Model):
                             product=product,
                             quantity=1.0,
                             partner=invoice_vals['partner_id'],
-                            date=today,  # ✅ Use today for pricing consistency
+                            date=today,  # Use today for pricing consistency
                         )
                         final_price_unit_fee_product = price if price else product.lst_price
                         _logger.info("Price for fee product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
@@ -199,9 +182,6 @@ class StudentAdmission(models.Model):
 
             self.is_invoiced = True
             _logger.info(f"Successfully created {len(created_invoices)} invoices for admission {self.name}")
-
-            # EMERGENCY FIX: Force refresh the computed fields
-            self.invalidate_recordset(['invoice_ids', 'invoice_count'])
 
             # Return action to view all created invoices
             return {

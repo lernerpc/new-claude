@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Extend student admission form view -->
+    <record id="view_student_admission_form_inherit_invoice" model="ir.ui.view">
+        <field name="name">student.admission.form.inherit.invoice</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.view_student_admission_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_count']" position="after">
+                <field name="invoice_ids" readonly="1">
+                    <tree>
+                        <field name="name"/>
+                        <field name="invoice_date"/>
+                        <field name="amount_total"/>
+                        <field name="state"/>
+                    </tree>
+                </field>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Extend student admission tree view -->
+    <record id="view_student_admission_tree_inherit_invoice" model="ir.ui.view">
+        <field name="name">student.admission.tree.inherit.invoice</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.view_student_admission_tree"/>
+        <field name="arch" type="xml">
+            <field name="invoice_count" position="after">
+                <field name="invoice_ids" widget="many2many_tags" readonly="1"/>
+            </field>
+        </field>
+    </record>
+</odoo> 

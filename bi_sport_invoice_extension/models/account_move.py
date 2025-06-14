@@ -49,10 +49,6 @@ class AccountMove(models.Model):
         for vals in vals_list:
             _logger.info(f"🔍 Creating invoice with vals: invoice_origin={vals.get('invoice_origin')}, ref={vals.get('ref')}, move_type={vals.get('move_type')}")
 
-            # IMPORTANT: Do NOT set 'name' field - let Odoo handle it
-            if 'name' in vals:
-                vals.pop('name')
-
             # Check if this invoice is from student admission and has a reference containing fee info
             if vals.get('invoice_origin') and vals.get('ref'):
                 _logger.info(f"🔍 Found invoice_origin and ref, searching for admission...")
@@ -118,25 +114,20 @@ class AccountMove(models.Model):
 
         return invoices
 
-    def action_post(self):
-        """Override to ensure proper sequence is set before posting"""
-        # For invoices, ensure they use the INV sequence
-        for move in self:
-            if move.move_type == 'out_invoice' and move.state == 'draft':
-                if not move.name or move.name == '/' or 'TEMP' in str(move.name):
-                    # Get the INV sequence
-                    sequence = self.env['ir.sequence'].search([
-                        ('code', '=', 'account.move.INV')
-                    ], limit=1)
-
-                    if sequence:
-                        # Generate the next number
-                        move.name = sequence.next_by_id(sequence_date=move.date)
-                    else:
-                        # Fallback to default behavior
-                        move.name = '/'
-
-        return super().action_post()
+    def _get_sequence(self):
+        """Override to ensure proper sequence handling for invoices"""
+        self.ensure_one()
+        # For customer invoices, ensure we use the correct sequence
+        if self.move_type == 'out_invoice':
+            journal = self.journal_id
+            if journal.sequence_id:
+                return journal.sequence_id
+            # Fallback to the default invoice sequence
+            return self.env['ir.sequence'].search([
+                ('code', '=', 'account.move'),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+        return super()._get_sequence()
 
     def action_recompute_prices_from_pricelist(self):
         self.ensure_one()

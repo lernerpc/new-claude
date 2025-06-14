@@ -1,12 +1,33 @@
 import logging
-from odoo import models, api, fields, _ # Import _ for translation
+from odoo import models, api, fields, _ 
 from odoo.exceptions import ValidationError
-from datetime import date # Import date for date.today()
+from datetime import date
 
 _logger = logging.getLogger(__name__)
 
 class StudentAdmission(models.Model):
     _inherit = 'student.admission'
+
+    # Override the invoice_ids field to make it stored
+    invoice_ids = fields.One2many('account.move', compute='_compute_invoice_ids', string='Invoices', store=True)
+    invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count', store=True)
+
+    @api.depends('student_id', 'name')
+    def _compute_invoice_ids(self):
+        """Compute related invoices for the student"""
+        for record in self:
+            if record.student_id and record.name:
+                # Find invoices related to this student admission
+                invoices = self.env['account.move'].search([
+                    ('partner_id', '=', record.student_id.id),
+                    ('invoice_origin', '=', record.name),
+                    ('move_type', 'in', ['out_invoice', 'out_refund'])
+                ])
+                record.invoice_ids = invoices
+                record.invoice_count = len(invoices)
+            else:
+                record.invoice_ids = False
+                record.invoice_count = 0
 
     def action_make_invoice(self):
         self.ensure_one()
@@ -39,21 +60,22 @@ class StudentAdmission(models.Model):
             if not sale_journals:
                 raise ValidationError(_('No sale journal found!'))
 
-            created_invoices = self.env['account.move'] # Use a recordset to collect invoices
+            created_invoices = self.env['account.move']
 
             # Create one invoice per fee
             for fee in fees:
-                # Prepare invoice values
+                # Prepare invoice values with correct dates
                 invoice_vals = {
                     'invoice_origin': self.name or '',
                     'move_type': 'out_invoice',
                     'ref': f"Invoice for {fee.name} - {self.name}",
-                    'journal_id': sale_journals.id, # Use .id from the single journal found
+                    'journal_id': sale_journals.id,
                     'partner_id': self.parent_id.id if self.parent_id else self.student_id.id,
-                    'invoice_date': date.today(),
+                    'invoice_date': fee.start_date,  # Use membership fee start date
+                    'invoice_date_due': fee.start_date,  # Use membership fee start date
                     'currency_id': self.student_id.currency_id.id or self.env.company.currency_id.id,
                     'company_id': self.env.company.id,
-                    'pricelist_id': pricelist_to_use.id, # Assign the pricelist to the invoice
+                    'pricelist_id': pricelist_to_use.id,
                 }
                 _logger.debug("Invoice header values for fee %s: %s", fee.name, invoice_vals)
 
@@ -65,12 +87,17 @@ class StudentAdmission(models.Model):
                         _logger.warning(f"Skipping non-sport product in activities for fee {fee.name}: {sport_product.name}")
                         continue
 
+                    # Check if product has is_guardian tag and skip if guardian is not true
+                    if self._should_skip_product_based_on_guardian(sport_product):
+                        _logger.info(f"Skipping sport product '{sport_product.name}' for fee {fee.name} due to guardian requirement not met")
+                        continue
+
                     # Apply pricelist for sport products
                     price = pricelist_to_use._get_product_price(
                         product=sport_product,
                         quantity=1.0,
                         partner=invoice_vals['partner_id'],
-                        date=date.today(),
+                        date=fee.start_date,  # Use fee start date for pricing
                     )
                     final_price_unit_sport = price if price else sport_product.lst_price
                     _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
@@ -78,7 +105,7 @@ class StudentAdmission(models.Model):
 
                     invoice_lines.append((0, 0, {
                         'product_id': sport_product.id,
-                        'name': f"{sport_product.name} - {fee.name}", # Include fee name for clarity
+                        'name': f"{sport_product.name} - {fee.name}",
                         'product_uom_id': sport_product.uom_id.id,
                         'price_unit': final_price_unit_sport,
                         'quantity': 1.0,
@@ -87,12 +114,17 @@ class StudentAdmission(models.Model):
                 # Add lines for the fee's specific products (if any)
                 if fee.product_ids:
                     for product in fee.product_ids:
+                        # Check if product has is_guardian tag and skip if guardian is not true
+                        if self._should_skip_product_based_on_guardian(product):
+                            _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to guardian requirement not met")
+                            continue
+
                         # Apply pricelist for fee-specific products
                         price = pricelist_to_use._get_product_price(
                             product=product,
                             quantity=1.0,
                             partner=invoice_vals['partner_id'],
-                            date=date.today(),
+                            date=fee.start_date,  # Use fee start date for pricing
                         )
                         final_price_unit_fee_product = price if price else product.lst_price
                         _logger.info("Price for fee product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
@@ -112,7 +144,7 @@ class StudentAdmission(models.Model):
                 if invoice_lines:
                     invoice_vals['invoice_line_ids'] = invoice_lines
                     invoice = self.env['account.move'].sudo().create(invoice_vals)
-                    created_invoices += invoice # Add to recordset
+                    created_invoices += invoice
                     _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s", invoice.name, invoice.id, fee.name, self.name)
                 else:
                     _logger.warning(f"No invoice lines generated for fee {fee.name} for admission {self.name}. Skipping invoice creation for this fee.")
@@ -128,8 +160,8 @@ class StudentAdmission(models.Model):
                 'name': 'Created Invoices',
                 'type': 'ir.actions.act_window',
                 'res_model': 'account.move',
-                'view_mode': 'tree,form', # Show tree view to see all invoices
-                'domain': [('id', 'in', created_invoices.ids)], # Filter to show only the ones just created
+                'view_mode': 'tree,form',
+                'domain': [('id', 'in', created_invoices.ids)],
                 'target': 'current',
             }
 
@@ -139,6 +171,22 @@ class StudentAdmission(models.Model):
         except Exception as e:
             _logger.error("An unexpected error occurred while creating invoices for admission %s: %s", self.name, str(e))
             raise ValidationError(f"An unexpected error occurred: {str(e)}. Please contact your administrator.")
+
+    def _should_skip_product_based_on_guardian(self, product):
+        """
+        Check if a product should be skipped based on guardian requirements.
+        Returns True if the product should be skipped, False otherwise.
+        """
+        # Check if the product has the 'is_guardian' tag
+        guardian_tag = self.env['product.tag'].search([('name', '=', 'is_guardian')], limit=1)
+        
+        if guardian_tag and guardian_tag in product.product_tag_ids:
+            # Product has is_guardian tag - only include if student admission has is_guardian = True
+            if not getattr(self, 'is_guardian', False):
+                _logger.info(f"Product '{product.name}' has 'is_guardian' tag but student admission is_guardian is False. Skipping product.")
+                return True
+        
+        return False
 
     @api.model_create_multi
     def create(self, vals_list):

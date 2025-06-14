@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fix_invoice_links_wizard_form" model="ir.ui.view">
+        <field name="name">fix.invoice.links.wizard.form</field>
+        <field name="model">fix.invoice.links.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Fix Invoice Links">
+                <group>
+                    <field name="fix_type"/>
+                    <field name="fix_all"/>
+                </group>
+                <group attrs="{'invisible': [('fix_all', '=', True)]}">
+                    <field name="selected_invoice_ids" attrs="{'invisible': [('fix_type', 'in', ['registrations'])], 'required': [('fix_type', 'in', ['invoices', 'both'])]}"/>
+                    <field name="selected_registration_ids" attrs="{'invisible': [('fix_type', 'in', ['invoices'])], 'required': [('fix_type', 'in', ['registrations', 'both'])]}"/>
+                </group>
+                <footer>
+                    <button name="action_fix" string="Fix" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_fix_invoice_links_wizard" model="ir.actions.act_window">
+        <field name="name">Fix Invoice Links</field>
+        <field name="res_model">fix.invoice.links.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Add to Invoice Action Menu -->
+    <record id="account_move_fix_invoice_links" model="ir.actions.act_window">
+        <field name="name">Fix Invoice Links</field>
+        <field name="res_model">fix.invoice.links.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="account.model_account_move"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+
+    <!-- Add to Registration Action Menu -->
+    <record id="student_admission_fix_invoice_links" model="ir.actions.act_window">
+        <field name="name">Fix Invoice Links</field>
+        <field name="res_model">fix.invoice.links.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="bi_sport_center_management.model_student_admission"/>
+        <field name="binding_view_types">list,form</field>
+    </record>
+</odoo> 
