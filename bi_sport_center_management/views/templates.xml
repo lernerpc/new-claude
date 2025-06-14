@@ -1813,7 +1813,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                             <hr/>
-                            <h6>الاحتياجات الخاصة</h6>
+                            <h6>الأمراض</h6>
                             <div class="col-12">
                                 <div class="form-check">
                                     <input name="is_disability" class="form-check-input is_disability" type="checkbox" id="is_disability"/>
@@ -1822,7 +1822,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                             <div class="col-md-12">
-                                <textarea placeholder="اكتب وصف الإعاقة إن وجدت..." name="disability_description" class="form-control d-none" id="disability_description"/>
+                                <textarea placeholder="اكتب وصف المرض إن وجدت..." name="disability_description" class="form-control d-none" id="disability_description"/>
                             </div>
                             <hr/>
 

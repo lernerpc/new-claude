@@ -20,8 +20,8 @@ class StudentAdmission(models.Model):
     email = fields.Char('البريد الإلكتروني', related='student_id.email', store=True, readonly=False)
     birth_date = fields.Date('تاريخ الميلاد', related='student_id.birth_date', store=True, readonly=False)
     gender = fields.Selection([('male', 'ذكر'), ('female', 'أنثى')], string='الجنس', related='student_id.gender', store=True, readonly=False)
-    is_disability = fields.Boolean('هل يوجد أي إعاقة', related='student_id.is_disability', store=True, readonly=False)
-    disability_description = fields.Text('وصف الإعاقة', related='student_id.disability_description', store=True, readonly=False)
+    is_disability = fields.Boolean('هل يوجد أي مرض', related='student_id.is_disability', store=True, readonly=False)
+    disability_description = fields.Text('وصف المرض', related='student_id.disability_description', store=True, readonly=False)
     # Add member_type field with proper labels
     member_type = fields.Selection([
         ('regular', 'عضو رياضي'),

@@ -262,7 +262,7 @@
                                         <t t-foreach="student.child_ids" t-as="child">
                                             <t t-if="child_counter &lt; display_limit">
                                                 <div class="child-widget">
-                                                    <t t-set="first_two_words" t-value="' '.join(child.name.split()[:2]) if child.name else ''"/>
+                                                    <t t-set="first_two_words" t-value="' '.join(child.name.split()[:3]) if child.name else ''"/>
                                                     <span t-esc="first_two_words"/>
                                                 </div>
                                                 <t t-set="child_counter" t-value="child_counter + 1"/>
@@ -283,6 +283,17 @@
                                         </t>
                                     </div>
                                 </div>
+
+                                <t t-if="student.academic_subtype">
+                                    <div t-if="student.academic_subtype == '7star'" class="transparent-bg" style="margin-top: 1mm;">
+                                        <strong>أكاديمية</strong>
+                                        <span style="margin-inline-start: 2mm;">7 ستار ⭐</span>
+                                    </div>
+                                    <div t-elif="student.academic_subtype == 'academic'" class="transparent-bg" style="margin-top: 1mm;">
+                                        <strong>أكاديمية</strong>
+                                        <span style="margin-inline-start: 2mm;">الأكاديمية 🏫</span>
+                                    </div>
+                                </t>
 
                                 <!-- Year Section -->
                                 <!-- <div class="info-item">

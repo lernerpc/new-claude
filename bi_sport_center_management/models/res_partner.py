@@ -31,6 +31,10 @@ class ResPartner(models.Model):
         'product.product', string="Sport Name", domain=[('is_sportname', '=', True)])
     is_parent = fields.Boolean(string="Is Parent", help="Indicates if this partner is a parent")
     is_guardian = fields.Boolean(string="Is Guardian", help="Indicates if this parent is a guardian")
+    academic_subtype = fields.Selection([
+        ('7star', '7 ستار'),
+        ('academic', 'أكاديمية')
+    ], string='نوع العضوية الأكاديمية', help="نوع العضوية الأكاديمية المختارة") 
     is_parking = fields.Boolean(string="Has Parking", help="Indicates if this parent has parking privileges")
     child_ids = fields.One2many('res.partner', 'parent_id', string="Children", help="Student accounts linked to this parent")
     parent_id = fields.Many2one('res.partner', string="Parent", help="Parent account for this student")

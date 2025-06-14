@@ -117,6 +117,9 @@ class StudentRegistration(http.Controller):
                     'is_parent': True,
                     'is_guardian': kw.get('is_guardian') == 'on',
                     'is_parking': kw.get('is_parking') == 'on',
+                    'academic_subtype': academic_subtype,  # Add academic subtype
+
+
                 }
 
                 if parent_partner:
