@@ -35,7 +35,6 @@ class StudentAdmission(models.Model):
             'context': {
                 'default_move_type': 'out_invoice',
                 'default_partner_id': self.student_id.id,
-                'search_default_open': 1,
             }
         }
         
@@ -143,6 +142,11 @@ class StudentAdmission(models.Model):
                             _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to guardian requirement not met")
                             continue
 
+                        # Check if fee product should be skipped based on regular tag and member type
+                        if self._should_skip_registration_fee_based_on_academic_member(product):
+                            _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to 'regular' tag and member_type being 'academic'")
+                            continue
+
                         # Apply pricelist for fee-specific products using today's date
                         price = pricelist_to_use._get_product_price(
                             product=product,
@@ -163,6 +167,38 @@ class StudentAdmission(models.Model):
                         }))
                 else:
                     _logger.info(f"No specific products configured for fee {fee.name}")
+
+                # Add products with "regular" tag for regular members only
+                regular_products = self._get_registration_fees()
+                _logger.info(f"Found {len(regular_products)} products with 'regular' tag: {regular_products.mapped('name')}")
+                _logger.info(f"Student admission {self.name} has member_type: {self.member_type}")
+                
+                for regular_product in regular_products:
+                    # Check if regular product should be skipped based on member type
+                    if self._should_skip_registration_fee_based_on_academic_member(regular_product):
+                        _logger.info(f"SKIPPED: regular product '{regular_product.name}' for fee {fee.name} due to member_type being 'academic'")
+                        continue
+
+                    _logger.info(f"INCLUDED: regular product '{regular_product.name}' for fee {fee.name} for member_type '{self.member_type}'")
+                    
+                    # Apply pricelist for regular products using today's date
+                    price = pricelist_to_use._get_product_price(
+                        product=regular_product,
+                        quantity=1.0,
+                        partner=invoice_vals['partner_id'],
+                        date=today,
+                    )
+                    final_price_unit_regular = price if price else regular_product.lst_price
+                    _logger.info("Price for regular product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
+                                 regular_product.name, fee.name, final_price_unit_regular, price, regular_product.lst_price)
+
+                    invoice_lines.append((0, 0, {
+                        'product_id': regular_product.id,
+                        'name': f"{regular_product.name} - {fee.name}",
+                        'product_uom_id': regular_product.uom_id.id,
+                        'price_unit': final_price_unit_regular,
+                        'quantity': 1,
+                    }))
 
                 # Create the invoice only if there are lines to add
                 if invoice_lines:
@@ -200,6 +236,23 @@ class StudentAdmission(models.Model):
             _logger.error("An unexpected error occurred while creating invoices for admission %s: %s", self.name, str(e))
             raise ValidationError(f"An unexpected error occurred: {str(e)}. Please contact your administrator.")
 
+    def _get_registration_fees(self):
+        """
+        Get all products that have the "regular" tag.
+        These are considered registration fees for non-academic members.
+        """
+        regular_tag = self.env['product.tag'].search([('name', '=', 'regular')], limit=1)
+        _logger.info(f"Searching for products with 'regular' tag. Tag found: {regular_tag.name if regular_tag else 'None'}")
+        
+        if regular_tag:
+            products = self.env['product.product'].search([('product_tag_ids', 'in', [regular_tag.id])])
+            _logger.info(f"Found {len(products)} products with 'regular' tag: {products.mapped('name')}")
+            return products
+        
+        _logger.info("No 'regular' tag found, returning empty recordset")
+        # Return empty recordset if no "regular" tag found
+        return self.env['product.product']
+
     def _should_skip_product_based_on_guardian(self, product):
         """
         Check if a product should be skipped based on guardian requirements.
@@ -213,6 +266,26 @@ class StudentAdmission(models.Model):
             if not getattr(self, 'is_guardian', False):
                 _logger.info(f"Product '{product.name}' has 'is_guardian' tag but student admission is_guardian is False. Skipping product.")
                 return True
+
+        return False
+
+    def _should_skip_registration_fee_based_on_academic_member(self, product):
+        """
+        Check if a product with "regular" tag should be skipped based on member type.
+        Returns True if the product should be skipped, False otherwise.
+        
+        Logic: Products with "regular" tag are only included for regular members (NOT academic members)
+        """
+        # Check if the product has the 'regular' tag
+        regular_tag = self.env['product.tag'].search([('name', '=', 'regular')], limit=1)
+
+        if regular_tag and regular_tag in product.product_tag_ids:
+            # Product has regular tag - skip if member_type is 'academic'
+            if self.member_type == 'academic':
+                _logger.info(f"Product '{product.name}' has 'regular' tag and student admission member_type is 'academic'. Skipping product.")
+                return True
+            else:
+                _logger.info(f"Product '{product.name}' has 'regular' tag and student admission member_type is '{self.member_type}'. Including product.")
 
         return False
 
