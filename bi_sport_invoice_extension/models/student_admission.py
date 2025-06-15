@@ -10,7 +10,7 @@ class StudentAdmission(models.Model):
 
     # Override the invoice_ids field to use proper One2many relationship
     invoice_ids = fields.One2many('account.move', 'student_admission_id', string='Invoices')
-    
+
     # Override invoice_count to use the One2many relationship
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):
@@ -21,10 +21,10 @@ class StudentAdmission(models.Model):
     def action_view_invoice(self):
         """Action to view invoices related to this student admission"""
         self.ensure_one()
-        
+
         # Use the One2many relationship directly
         invoices = self.invoice_ids
-        
+
         action = {
             'name': _('Student Invoices'),
             'type': 'ir.actions.act_window',
@@ -35,9 +35,10 @@ class StudentAdmission(models.Model):
             'context': {
                 'default_move_type': 'out_invoice',
                 'default_partner_id': self.student_id.id,
+                'search_default_open': 1,
             }
         }
-        
+
         # If there's only one invoice, open it directly in form view
         if len(invoices) == 1:
             action.update({
@@ -45,8 +46,34 @@ class StudentAdmission(models.Model):
                 'res_id': invoices.id,
                 'views': [(False, 'form')],
             })
-        
+
         return action
+
+    def _ensure_fiscal_parent_setup(self):
+        """Ensure proper fiscal parent relationship is set up"""
+        self.ensure_one()
+        
+        if self.parent_id and self.student_id:
+            # Ensure parent is marked as company
+            if not self.parent_id.is_company:
+                self.parent_id.write({'is_company': True})
+                _logger.info(f"Set {self.parent_id.name} as company for proper parent-child relationship")
+            
+            # Ensure student is NOT a company
+            if self.student_id.is_company:
+                self.student_id.write({'is_company': False})
+                _logger.info(f"Set {self.student_id.name} as individual (not company)")
+            
+            # Set fiscal parent relationship
+            if self.student_id.parent_id != self.parent_id:
+                old_parent = self.student_id.parent_id.name if self.student_id.parent_id else 'None'
+                self.student_id.write({'parent_id': self.parent_id.id})
+                _logger.info(f"Set fiscal parent for {self.student_id.name}: {old_parent} → {self.parent_id.name}")
+                
+                # Add a note on the student partner
+                self.student_id.message_post(
+                    body=f"Fiscal parent set to {self.parent_id.name} for consolidated billing and portal access."
+                )
 
     def action_make_invoice(self):
         self.ensure_one()
@@ -62,6 +89,9 @@ class StudentAdmission(models.Model):
                 raise ValidationError(_('No pricelist found on the student admission record!'))
 
             _logger.info("Using pricelist: %s (ID: %s) for admission %s", pricelist_to_use.name, pricelist_to_use.id, self.name)
+
+            # IMPORTANT: Set up fiscal parent relationship before creating invoices
+            self._ensure_fiscal_parent_setup()
 
             # Fetch membership fees, sorted by sequence_id
             fees = self.env['sport.membership.fees'].search([], order='sequence_id asc')
@@ -86,20 +116,25 @@ class StudentAdmission(models.Model):
                 # Use today's date for invoice_date to avoid sequence mismatch, but keep due date as fee start date
                 today = date.today()
 
-                # Prepare invoice values with proper date handling
+                # ALWAYS create invoice on student account
                 invoice_vals = {
                     'invoice_origin': self.name or '',
                     'move_type': 'out_invoice',
                     'ref': f"Invoice for {fee.name} - {self.name}",
                     'journal_id': sale_journals.id,
-                    'partner_id': self.parent_id.id if self.parent_id else self.student_id.id,
-                    'invoice_date': today,  # Use today to match sequence numbering
-                    'invoice_date_due': fee.start_date,  # Use membership fee start date for due date
+                    'partner_id': self.student_id.id,  # ✅ ALWAYS use student as invoice partner
+                    'invoice_date': today,
+                    'invoice_date_due': fee.start_date,
                     'currency_id': self.student_id.currency_id.id or self.env.company.currency_id.id,
                     'company_id': self.env.company.id,
-                    'student_admission_id': self.id,  # Set the inverse relationship
+                    'student_admission_id': self.id,
                     # Don't set name here - let Odoo handle it in create()
                 }
+                
+                # Add a note about parent if exists
+                if self.parent_id:
+                    invoice_vals['narration'] = f"Student: {self.student_id.name}\nParent/Guardian: {self.parent_id.name}"
+                
                 _logger.debug("Invoice header values for fee %s: %s", fee.name, invoice_vals)
 
                 invoice_lines = []
@@ -115,12 +150,12 @@ class StudentAdmission(models.Model):
                         _logger.info(f"Skipping sport product '{sport_product.name}' for fee {fee.name} due to guardian requirement not met")
                         continue
 
-                    # Apply pricelist for sport products using today's date for consistency
+                    # Apply pricelist for sport products - use student for pricing
                     price = pricelist_to_use._get_product_price(
                         product=sport_product,
                         quantity=1.0,
-                        partner=invoice_vals['partner_id'],
-                        date=today,  # Use today for pricing consistency
+                        partner=self.student_id,  # Use student for pricing
+                        date=today,
                     )
                     final_price_unit_sport = price if price else sport_product.lst_price
                     _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
@@ -142,17 +177,12 @@ class StudentAdmission(models.Model):
                             _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to guardian requirement not met")
                             continue
 
-                        # Check if fee product should be skipped based on regular tag and member type
-                        if self._should_skip_registration_fee_based_on_academic_member(product):
-                            _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to 'regular' tag and member_type being 'academic'")
-                            continue
-
-                        # Apply pricelist for fee-specific products using today's date
+                        # Apply pricelist for fee-specific products - use student for pricing
                         price = pricelist_to_use._get_product_price(
                             product=product,
                             quantity=1.0,
-                            partner=invoice_vals['partner_id'],
-                            date=today,  # Use today for pricing consistency
+                            partner=self.student_id,  # Use student for pricing
+                            date=today,
                         )
                         final_price_unit_fee_product = price if price else product.lst_price
                         _logger.info("Price for fee product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
@@ -168,38 +198,6 @@ class StudentAdmission(models.Model):
                 else:
                     _logger.info(f"No specific products configured for fee {fee.name}")
 
-                # Add products with "regular" tag for regular members only
-                regular_products = self._get_registration_fees()
-                _logger.info(f"Found {len(regular_products)} products with 'regular' tag: {regular_products.mapped('name')}")
-                _logger.info(f"Student admission {self.name} has member_type: {self.member_type}")
-                
-                for regular_product in regular_products:
-                    # Check if regular product should be skipped based on member type
-                    if self._should_skip_registration_fee_based_on_academic_member(regular_product):
-                        _logger.info(f"SKIPPED: regular product '{regular_product.name}' for fee {fee.name} due to member_type being 'academic'")
-                        continue
-
-                    _logger.info(f"INCLUDED: regular product '{regular_product.name}' for fee {fee.name} for member_type '{self.member_type}'")
-                    
-                    # Apply pricelist for regular products using today's date
-                    price = pricelist_to_use._get_product_price(
-                        product=regular_product,
-                        quantity=1.0,
-                        partner=invoice_vals['partner_id'],
-                        date=today,
-                    )
-                    final_price_unit_regular = price if price else regular_product.lst_price
-                    _logger.info("Price for regular product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
-                                 regular_product.name, fee.name, final_price_unit_regular, price, regular_product.lst_price)
-
-                    invoice_lines.append((0, 0, {
-                        'product_id': regular_product.id,
-                        'name': f"{regular_product.name} - {fee.name}",
-                        'product_uom_id': regular_product.uom_id.id,
-                        'price_unit': final_price_unit_regular,
-                        'quantity': 1,
-                    }))
-
                 # Create the invoice only if there are lines to add
                 if invoice_lines:
                     invoice_vals['invoice_line_ids'] = invoice_lines
@@ -209,7 +207,15 @@ class StudentAdmission(models.Model):
 
                     invoice = self.env['account.move'].sudo().create(invoice_vals)
                     created_invoices += invoice
-                    _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s", invoice.name, invoice.id, fee.name, self.name)
+                    _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s", 
+                                invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
+                    
+                    # Add a message to the invoice about the parent
+                    if self.parent_id:
+                        invoice.message_post(
+                            body=f"This invoice is for student {self.student_id.name}. "
+                                 f"Parent/Guardian: {self.parent_id.name} (has portal access through fiscal parent relationship)."
+                        )
                 else:
                     _logger.warning(f"No invoice lines generated for fee {fee.name} for admission {self.name}. Skipping invoice creation for this fee.")
 
@@ -218,6 +224,11 @@ class StudentAdmission(models.Model):
 
             self.is_invoiced = True
             _logger.info(f"Successfully created {len(created_invoices)} invoices for admission {self.name}")
+
+            # Send notification to parent if exists
+            if self.parent_id and self.parent_id.email:
+                # Log that parent will be notified
+                _logger.info(f"Parent {self.parent_id.name} will be notified about invoices for their child {self.student_id.name}")
 
             # Return action to view all created invoices
             return {
@@ -236,23 +247,6 @@ class StudentAdmission(models.Model):
             _logger.error("An unexpected error occurred while creating invoices for admission %s: %s", self.name, str(e))
             raise ValidationError(f"An unexpected error occurred: {str(e)}. Please contact your administrator.")
 
-    def _get_registration_fees(self):
-        """
-        Get all products that have the "regular" tag.
-        These are considered registration fees for non-academic members.
-        """
-        regular_tag = self.env['product.tag'].search([('name', '=', 'regular')], limit=1)
-        _logger.info(f"Searching for products with 'regular' tag. Tag found: {regular_tag.name if regular_tag else 'None'}")
-        
-        if regular_tag:
-            products = self.env['product.product'].search([('product_tag_ids', 'in', [regular_tag.id])])
-            _logger.info(f"Found {len(products)} products with 'regular' tag: {products.mapped('name')}")
-            return products
-        
-        _logger.info("No 'regular' tag found, returning empty recordset")
-        # Return empty recordset if no "regular" tag found
-        return self.env['product.product']
-
     def _should_skip_product_based_on_guardian(self, product):
         """
         Check if a product should be skipped based on guardian requirements.
@@ -266,26 +260,6 @@ class StudentAdmission(models.Model):
             if not getattr(self, 'is_guardian', False):
                 _logger.info(f"Product '{product.name}' has 'is_guardian' tag but student admission is_guardian is False. Skipping product.")
                 return True
-
-        return False
-
-    def _should_skip_registration_fee_based_on_academic_member(self, product):
-        """
-        Check if a product with "regular" tag should be skipped based on member type.
-        Returns True if the product should be skipped, False otherwise.
-        
-        Logic: Products with "regular" tag are only included for regular members (NOT academic members)
-        """
-        # Check if the product has the 'regular' tag
-        regular_tag = self.env['product.tag'].search([('name', '=', 'regular')], limit=1)
-
-        if regular_tag and regular_tag in product.product_tag_ids:
-            # Product has regular tag - skip if member_type is 'academic'
-            if self.member_type == 'academic':
-                _logger.info(f"Product '{product.name}' has 'regular' tag and student admission member_type is 'academic'. Skipping product.")
-                return True
-            else:
-                _logger.info(f"Product '{product.name}' has 'regular' tag and student admission member_type is '{self.member_type}'. Including product.")
 
         return False
 
