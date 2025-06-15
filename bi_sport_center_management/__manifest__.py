@@ -43,6 +43,8 @@
             'bi_sport_center_management/static/src/xml/dashboard.xml',
         ],
     },
+    'demo': [],  # Empty or remove this line completely
+
     'license':'OPL-1',
     'installable': True,
     'auto_install': False,

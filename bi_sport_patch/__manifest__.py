@@ -13,6 +13,7 @@
         'views/student_admission_patch_views.xml',
         'report/student_id_card_report.xml',
     ],
+    'demo': [],  # Empty or remove this line completely
     'installable': True,
     'auto_install': False,
     'application': False,

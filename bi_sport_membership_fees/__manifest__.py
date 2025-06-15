@@ -7,4 +7,6 @@
         'views/membership_fees_views.xml',
         'data/sequences.xml',
     ],
+    'demo': [],  # Empty or remove this line completely
+
 }

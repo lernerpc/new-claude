@@ -8,6 +8,8 @@
         'views/account_move_views.xml',
         'data/fix_invoice_links.xml',  # Commented out for now
     ],
+    'demo': [],  # Empty or remove this line completely
+
     'installable': True,
     'auto_install': False,
     'application': False,

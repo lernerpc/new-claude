@@ -15,6 +15,8 @@
         'security/ir.model.access.csv',
         'views/student_admission_views.xml',
     ],
+    'demo': [],  # Empty or remove this line completely
+
     'installable': True,
     'application': False,
     'auto_install': False,
