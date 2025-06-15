@@ -7,11 +7,7 @@ class StudentAdmission(models.Model):
     tag_ids = fields.Many2many('student.admission.tag', 'student_admission_tag_rel', 'student_id', 'tag_id', string='Tags')
     first_print_date = fields.Datetime('First Print Date', readonly=True)
     last_print_date = fields.Datetime('Last Print Date', readonly=True)
-    membership_number = fields.Char('رقم الاستمارة')
-
-    _sql_constraints = [
-        ('membership_number_unique', 'UNIQUE(membership_number)', 'Membership number must be unique.')
-    ]
+ 
 
 
     def action_print_and_mark(self):

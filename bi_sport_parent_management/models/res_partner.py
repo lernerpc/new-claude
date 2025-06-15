@@ -7,7 +7,6 @@ class ResPartner(models.Model):
     is_student = fields.Boolean(string="Is Student")
     is_guardian = fields.Boolean(string="Is Guardian")
     is_parking = fields.Boolean(string="Has Parking")
-    membership_number = fields.Char(string="Membership Number")
     printed = fields.Boolean(string="Printed")
     first_print_date = fields.Datetime(string="First Print Date")
     last_print_date = fields.Datetime(string="Last Print Date")

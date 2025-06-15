@@ -8,7 +8,8 @@ class StudentAdmission(models.Model):
     _name = "student.admission"
     _description = "Student Admission"
 
-    name = fields.Char('الاسم', required=True, readonly=True, default=lambda self: _('New'))
+    name = fields.Char('رقم العضوية', required=True, readonly=True, default=lambda self: _('New'))
+
     student_id = fields.Many2one('res.partner', string='اسم الطالب', required=True, domain=[('is_student', '=', True)])
     student_national_id = fields.Char('الرقم القومي للطالب', related='student_id.student_national_id', store=True, readonly=False)
     mobile = fields.Char('رقم هاتف الطالب', related='student_id.mobile', store=True, readonly=False)
@@ -66,6 +67,27 @@ class StudentAdmission(models.Model):
 
     invoice_ids = fields.One2many('account.move', compute='_compute_invoice_ids', string='Invoices')
     invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count')
+
+    membership_number = fields.Char('رقم الاستمارة')
+
+    # Remove the SQL constraint and add Python validation instead
+    # _sql_constraints = [
+    #     ('membership_number_unique', 'UNIQUE(membership_number)', 'Membership number must be unique.')
+    # ]
+
+    @api.constrains('membership_number', 'state')
+    def _check_membership_number_unique(self):
+        """Validate membership number uniqueness only during enrollment or student creation"""
+        for record in self:
+            if record.membership_number and record.state in ['enrolled', 'student']:
+                # Check if another record with the same membership_number exists
+                existing_record = self.search([
+                    ('membership_number', '=', record.membership_number),
+                    ('id', '!=', record.id),
+                    ('state', 'in', ['enrolled', 'student'])
+                ])
+                if existing_record:
+                    raise ValidationError(_('Membership number must be unique for enrolled/student records.'))
 
     @api.depends('student_id')
     def _compute_invoice_ids(self):

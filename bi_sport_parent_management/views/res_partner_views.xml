@@ -58,16 +58,12 @@
                     </div>
                 </div>
             </xpath>
-            <xpath expr="//sheet/group/group[1]" position="inside">
-                <field name="membership_number" required="true" invisible="is_parent == False"/>
-            </xpath>
             <xpath expr="//page[@name='sport_center']" position="replace">
                 <page name="parent_info" string="Parent Information" invisible="is_parent == False">
                     <group>
                         <group string="Parent Details">
                             <field name="is_guardian"/>
                             <field name="is_parking"/>
-                            <!-- <field name="membership_number"/> -->
                             <field name="printed"/>
                             <field name="first_print_date"/>
                             <field name="last_print_date"/>

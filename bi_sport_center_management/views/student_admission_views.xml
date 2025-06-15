@@ -28,15 +28,14 @@
             <search string="Student Admissions">
                 <!-- Default search fields in priority order -->
                 <field name="student_id" string="اسم الطالب"/>
+                <field name="p_name" string="اسم ولي الأمر"/>
+                <field name="membership_number" string="رقم الاستمارة"/>
                 <field name="mobile" string="رقم هاتف الطالب"/>
                 <field name="parent_mobile" string="رقم هاتف ولي الأمر"/>
                 <field name="student_national_id" string="الرقم القومي للطالب"/>
                 <field name="parent_national_id" string="الرقم القومي لولي الأمر"/>
-                <field name="p_name" string="اسم ولي الأمر"/>
-                <field name="name" string="رقم التسجيل"/>
+                <field name="name" string="رقم العضوية"/>
                 <field name="activity_ids" string="الأنشطة الرياضية"/>
-                <field name="trainer_id" string="المدرب"/>
-                <field name="email" string="البريد الإلكتروني"/>
 
                 <!-- Filters -->
                 <separator/>
