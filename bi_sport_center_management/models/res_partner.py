@@ -58,6 +58,14 @@ class ResPartner(models.Model):
     #     ('parent_national_id_unique', 'UNIQUE(parent_national_id)', 'الرقم القومي لولي الأمر يجب أن يكون فريدًا.')
     # ]
 
+    # Add this temporary method to your res_partner.py
+    def force_recompute_invoices(self):
+        """Temporary method to force recompute invoice fields"""
+        partners = self.search([])
+        partners._compute_invoice_ids()
+        partners._compute_payment_state()
+        return True
+
     @api.depends('name', 'student_national_id')  # Changed dependency
     def _compute_invoice_ids(self):
         """Compute related invoices for the student"""
