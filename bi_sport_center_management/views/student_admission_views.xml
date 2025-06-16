@@ -88,12 +88,28 @@
             <form string="Student">
 
                 <header>
-
                     <field name="payment_state" widget="statusbar" statusbar_visible="not_paid,partial,paid" readonly="1"/>
-                    <button string="Enroll" name="action_enroll" invisible="state != 'new'" type="object" class="oe_highlight"/>
-                    <button string="Make a student" name="action_make_student" invisible="state != 'enrolled'" type="object" class="oe_highlight"/>
-                    <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'student']"/>
-                    <field name="state" widget="statusbar"/>
+                    <button string="Enroll" 
+                            name="action_enroll" 
+                            type="object" 
+                            class="oe_highlight"
+                            invisible="state != 'new'"/>
+                    <button string="Make a student" 
+                            name="action_make_student" 
+                            type="object" 
+                            class="oe_highlight"
+                            invisible="state != 'enrolled'"/>
+                    <button string="Cancel" 
+                            name="action_cancel" 
+                            type="object"
+                            invisible="state in ['cancel', 'student']"/>
+                    <button name="reset_to_new" 
+                            string="Reset to New" 
+                            type="object"
+                            class="oe_highlight"
+                            invisible="state != 'cancel'"/>
+                    <field name="state" widget="statusbar" 
+                           statusbar_visible="new,enrolled,student,cancel"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">

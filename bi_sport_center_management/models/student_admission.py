@@ -263,7 +263,26 @@ class StudentAdmission(models.Model):
             self.student_id.update(student_vals)
 
     def action_cancel(self):
-        self.state = 'cancel'
+        for record in self:
+            if record.state == 'new':
+                record.state = 'cancel'
+            else:
+                raise ValidationError(_("Only new registrations can be cancelled"))
+
+    def reset_to_new(self):
+        """Reset cancelled registration back to new state"""
+        for record in self:
+            if record.state == 'cancel':
+                # Reset all related records to draft
+                if record.invoice_ids:
+                    record.invoice_ids.write({'state': 'draft'})
+                
+                # Reset the registration to new
+                record.write({
+                    'state': 'new'
+                })
+            else:
+                raise ValidationError(_("Only cancelled registrations can be reset to new"))
 
     def action_view_invoice(self):
         self.ensure_one()
