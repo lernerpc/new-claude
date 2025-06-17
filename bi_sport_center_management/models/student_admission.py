@@ -65,6 +65,15 @@ class StudentAdmission(models.Model):
         ('invoicing_legacy', 'Invoicing App Legacy'),
     ], string='Payment Status', compute='_compute_payment_state', store=True, readonly=True)
 
+
+    payment_date = fields.Date(
+    string='Payment Date', 
+    compute='_compute_payment_state', 
+    store=True, 
+    readonly=True,
+    help="Date of the latest payment for this student"
+)
+
     invoice_ids = fields.One2many('account.move', compute='_compute_invoice_ids', string='Invoices')
     invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count')
 

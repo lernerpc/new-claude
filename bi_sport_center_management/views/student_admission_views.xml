@@ -88,7 +88,24 @@
             <form string="Student">
 
                 <header>
-                    <field name="payment_state" widget="statusbar" statusbar_visible="not_paid,partial,paid" readonly="1"/>
+                    <div class="o_form_payment_state_header">
+                        <div class="alert mb-0" role="alert" style="margin: 0; padding: 12px 20px; border-radius: 0; font-weight: bold; text-align: center; border-left: none; border-right: none; border-top: none;" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'">
+
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                                <div>
+                                    <i class="fa fa-credit-card fa-lg"/>
+                                    <strong>Payment Status:</strong>
+                                    <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
+                                </div>
+
+                                <div invisible="invoice_count == 0">
+                                    <i class="fa fa-file-text-o"/>
+                                    <strong>Invoices:</strong>
+                                    <field name="invoice_count" style="font-size: 16px; font-weight: bold;"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <button string="Enroll" name="action_enroll" type="object" class="oe_highlight" invisible="state != 'new'"/>
                     <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/>
                     <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'student']"/>
@@ -805,6 +822,57 @@
                 </script>
             </body>
         </html>
+    </template>
+
+
+    <template id="payment_state_styles_student" name="Student Payment State Styles">
+        <style>
+        .o_form_payment_state_header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 2px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .o_field_widget.badge.text-success {
+            background-color: #28a745 !important;
+            color: white !important;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        .o_field_widget.badge.text-warning {
+            background-color: #ffc107 !important;
+            color: #212529 !important;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        .o_field_widget.badge.text-info {
+            background-color: #17a2b8 !important;
+            color: white !important;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        .o_field_widget.badge.text-danger {
+            background-color: #dc3545 !important;
+            color: white !important;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        
+        .o_field_widget.badge.text-muted {
+            background-color: #6c757d !important;
+            color: white !important;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+        </style>
     </template>
 
 
