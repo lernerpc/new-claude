@@ -1,4 +1,7 @@
 from odoo import models, fields, api
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
@@ -43,6 +46,134 @@ class ResPartner(models.Model):
         readonly=True,
         help="Date of the latest payment for this partner"
     )
+    
+    def update_parent_privileges_or_logic(self, new_guardian, new_parking):
+        """
+        Update parent privileges using OR logic to never downgrade privileges.
+        If parent currently has a privilege OR the new child has it, keep it True.
+        """
+        self.ensure_one()
+        if not self.is_parent:
+            _logger.warning("Attempted to update parent privileges on non-parent record: %s", self.name)
+            return
+            
+        # Get current values
+        current_guardian = self.is_guardian or False
+        current_parking = self.is_parking or False
+        
+        # Apply OR logic (True if current OR new is True)
+        final_guardian = current_guardian or new_guardian
+        final_parking = current_parking or new_parking
+        
+        _logger.info("Parent privilege update for %s (ID: %s):", self.name, self.id)
+        _logger.info("  Current: Guardian=%s, Parking=%s", current_guardian, current_parking)
+        _logger.info("  New child: Guardian=%s, Parking=%s", new_guardian, new_parking)
+        _logger.info("  Final (OR logic): Guardian=%s, Parking=%s", final_guardian, final_parking)
+        
+        # Use SQL update directly to ensure it works
+        try:
+            self.env.cr.execute("""
+                UPDATE res_partner 
+                SET is_guardian = %s, is_parking = %s
+                WHERE id = %s
+            """, (final_guardian, final_parking, self.id))
+            
+            self.env.cr.commit()
+            
+            # Verify with SQL query
+            self.env.cr.execute("""
+                SELECT is_guardian, is_parking 
+                FROM res_partner 
+                WHERE id = %s
+            """, (self.id,))
+            
+            result = self.env.cr.fetchone()
+            if result:
+                actual_guardian, actual_parking = result
+                if actual_guardian == final_guardian and actual_parking == final_parking:
+                    _logger.info("✅ Parent privilege update SUCCESS: Guardian=%s, Parking=%s", 
+                                actual_guardian, actual_parking)
+                else:
+                    _logger.error("❌ Parent privilege update FAILED!")
+                    _logger.error("  Expected: Guardian=%s, Parking=%s", final_guardian, final_parking)
+                    _logger.error("  Actual: Guardian=%s, Parking=%s", actual_guardian, actual_parking)
+            
+        except Exception as e:
+            _logger.error("Error updating parent privileges: %s", str(e))
+            # Fallback to ORM write
+            try:
+                self.write({
+                    'is_guardian': final_guardian,
+                    'is_parking': final_parking,
+                })
+                _logger.info("Fallback ORM update completed")
+            except Exception as orm_error:
+                _logger.error("ORM update also failed: %s", str(orm_error))
+        
+    def _sql_update_privileges(self, guardian, parking):
+        """Direct SQL update method (legacy - kept for compatibility)"""
+        _logger.info("Direct SQL update for parent %s", self.name)
+        
+        self.env.cr.execute("""
+            UPDATE res_partner 
+            SET is_guardian = %s, is_parking = %s
+            WHERE id = %s
+        """, (guardian, parking, self.id))
+        
+        self.env.cr.commit()
+        
+        # Verify SQL update
+        self.env.cr.execute("""
+            SELECT is_guardian, is_parking 
+            FROM res_partner 
+            WHERE id = %s
+        """, (self.id,))
+        
+        result = self.env.cr.fetchone()
+        if result:
+            _logger.info("SQL update result: Guardian=%s, Parking=%s", result[0], result[1])
+        
+    def get_all_children_privileges(self):
+        """
+        Get the combined privileges from all children of this parent.
+        Returns tuple (any_guardian, any_parking)
+        """
+        self.ensure_one()
+        if not self.is_parent:
+            return (False, False)
+        
+        # Get all children
+        children = self.env['res.partner'].search([('parent_id', '=', self.id)])
+        
+        # Check if any child has guardian or parking privileges
+        any_guardian = any(child.is_guardian for child in children)
+        any_parking = any(child.is_parking for child in children)
+        
+        _logger.info("Parent %s has %d children. Combined privileges: Guardian=%s, Parking=%s", 
+                    self.name, len(children), any_guardian, any_parking)
+        
+        return (any_guardian, any_parking)
+    
+    def recalculate_parent_privileges(self):
+        """
+        Recalculate parent privileges based on all children.
+        Useful for fixing any inconsistencies.
+        """
+        self.ensure_one()
+        if not self.is_parent:
+            return
+            
+        any_guardian, any_parking = self.get_all_children_privileges()
+        
+        _logger.info("Recalculating privileges for parent %s: Guardian=%s, Parking=%s", 
+                    self.name, any_guardian, any_parking)
+        
+        self.write({
+            'is_guardian': any_guardian,
+            'is_parking': any_parking,
+        })
+        
+        self.env.cr.commit()
     
     @api.depends('invoice_ids')
     def _compute_invoice_count(self):

@@ -56,7 +56,6 @@ class StudentRegistration(http.Controller):
                 member_type = kw.get('member_type', 'regular')  # Get member type
                 academic_subtype = kw.get('academic_subtype', '')  # Get academic subtype
 
-
                 # Validate member type
                 if not member_type or member_type not in ['regular', 'academic']:
                     massage = 'يرجى اختيار نوع العضوية.'
@@ -96,7 +95,10 @@ class StudentRegistration(http.Controller):
                     except Exception as e:
                         _logger.error("Error processing student photo: %s", str(e))
 
-                # Create or update parent partner
+                # =================================================================
+                # PARENT CREATION/UPDATE LOGIC - FIXED VERSION
+                # =================================================================
+                
                 parent_partner = None
                 if parent_national_id:
                     parent_partner = request.env['res.partner'].sudo().search([
@@ -109,23 +111,61 @@ class StudentRegistration(http.Controller):
                         ('is_parent', '=', True)
                     ], limit=1)
 
-                # Create or update parent record
+                # Get current child's guardian and parking status
+                current_is_guardian = kw.get('is_guardian') == 'on'
+                current_is_parking = kw.get('is_parking') == 'on'
+
+                _logger.info("=== PARENT UPDATE START ===")
+                _logger.info("Current child: Guardian=%s, Parking=%s", current_is_guardian, current_is_parking)
+
+                # Prepare parent values
                 parent_vals = {
                     'name': self.remove2(kw.get('parent_fullname')),
                     'mobile': parent_mobile,
                     'parent_national_id': parent_national_id,
                     'is_parent': True,
-                    'is_guardian': kw.get('is_guardian') == 'on',
-                    'is_parking': kw.get('is_parking') == 'on',
-                    'academic_subtype': academic_subtype,  # Add academic subtype
-
-
+                    'academic_subtype': academic_subtype,
                 }
 
                 if parent_partner:
+                    # EXISTING PARENT - Apply OR logic
+                    _logger.info("Found existing parent: %s (ID: %s)", parent_partner.name, parent_partner.id)
+                    
+                    # Get current parent values
+                    existing_guardian = parent_partner.is_guardian or False
+                    existing_parking = parent_partner.is_parking or False
+                    
+                    _logger.info("Existing parent: Guardian=%s, Parking=%s", existing_guardian, existing_parking)
+                    
+                    # Calculate final values using OR logic
+                    final_guardian = existing_guardian or current_is_guardian
+                    final_parking = existing_parking or current_is_parking
+                    
+                    _logger.info("OR Logic result: Guardian=%s, Parking=%s", final_guardian, final_parking)
+                    
+                    # Add privilege values to parent_vals
+                    parent_vals['is_guardian'] = final_guardian
+                    parent_vals['is_parking'] = final_parking
+                    
+                    # Update the parent
                     parent_partner.write(parent_vals)
+                    
+                    _logger.info("✅ EXISTING PARENT UPDATED: Guardian=%s, Parking=%s", final_guardian, final_parking)
+                    
                 else:
+                    # NEW PARENT - Use current child's values
+                    parent_vals['is_guardian'] = current_is_guardian
+                    parent_vals['is_parking'] = current_is_parking
+                    
                     parent_partner = request.env['res.partner'].sudo().create(parent_vals)
+                    
+                    _logger.info("✅ NEW PARENT CREATED: Guardian=%s, Parking=%s", current_is_guardian, current_is_parking)
+
+                _logger.info("=== PARENT UPDATE END ===")
+
+                # =================================================================
+                # STUDENT CREATION LOGIC
+                # =================================================================
 
                 # Create student partner with parent relationship
                 partner_vals = {
@@ -140,8 +180,8 @@ class StudentRegistration(http.Controller):
                     'is_disability': kw.get('is_disability') == 'on',
                     'disability_description': kw.get('disability_description'),
                     'is_student': True,
-                    'is_guardian': kw.get('is_guardian') == 'on',
-                    'is_parking': kw.get('is_parking') == 'on',
+                    'is_guardian': current_is_guardian,
+                    'is_parking': current_is_parking,
                     'parent_id': parent_partner.id,  # Set the parent relationship
                 }
                 if student_photo_data:
@@ -195,7 +235,6 @@ class StudentRegistration(http.Controller):
                         activity_ids = [(6, 0, list(map(int, activity_ids_raw)))] if activity_ids_raw else []
                         pricelist_id = self._get_pricelist_id(kw.get('pricelist_id'))
                         academic_subtype = ''  # Clear academic subtype for regular members
-
                         
                         # Validate that regular members have activities
                         if not activity_ids_raw:
@@ -215,16 +254,49 @@ class StudentRegistration(http.Controller):
                         'activity_ids': activity_ids,
                         'check_register': kw.get('check_data') == 'on',
                         'pricelist_id': pricelist_id,
-                        'is_guardian': kw.get('is_guardian') == 'on',
-                        'is_parking': kw.get('is_parking') == 'on',
+                        'is_guardian': current_is_guardian,
+                        'is_parking': current_is_parking,
                         'student_photo': student_photo_data,
                         'member_type': member_type,
-                        'academic_subtype': academic_subtype,  # Add academic subtype
-
+                        'academic_subtype': academic_subtype,
                     }
 
                     request.session['is_data'] = False
                     admission = request.env['student.admission'].sudo().create(admission_vals)
+
+                    # =================================================================
+                    # SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT
+                    # =================================================================
+                    if admission and admission.parent_id:
+                        parent = admission.parent_id
+                        
+                        # Get all children of this parent
+                        all_children = request.env['res.partner'].sudo().search([
+                            ('parent_id', '=', parent.id),
+                            ('is_student', '=', True)
+                        ])
+                        
+                        # Calculate what parent should have based on ALL children
+                        should_have_guardian = any(child.is_guardian for child in all_children)
+                        should_have_parking = any(child.is_parking for child in all_children)
+                        
+                        _logger.info("SAFETY NET: Parent should have Guardian=%s, Parking=%s based on %d children", 
+                                    should_have_guardian, should_have_parking, len(all_children))
+                        
+                        # Check if parent needs updating
+                        if parent.is_guardian != should_have_guardian or parent.is_parking != should_have_parking:
+                            _logger.info("SAFETY NET: Correcting parent values")
+                            _logger.info("  Current: Guardian=%s, Parking=%s", parent.is_guardian, parent.is_parking)
+                            
+                            parent.write({
+                                'is_guardian': should_have_guardian,
+                                'is_parking': should_have_parking,
+                            })
+                            request.env.cr.commit()
+                            _logger.info("SAFETY NET: Parent corrected to Guardian=%s, Parking=%s", 
+                                        should_have_guardian, should_have_parking)
+                        else:
+                            _logger.info("SAFETY NET: Parent values are already correct")
                     
                     if member_type == 'academic':
                         message = 'تم التسجيل بنجاح كعضو أكاديمي'

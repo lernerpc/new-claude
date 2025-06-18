@@ -48,6 +48,7 @@ class StudentRegistration(BaseStudentRegistration):
 
     @http.route('/registration/create', auth='public', website=True, methods=['POST'])
     def registration_create(self, **kw):
+        _logger.info("=== PRICELIST EXTENSION START ===")
         _logger.info("Form submission data: %s", kw)
         _logger.info("Received pricelist_id: %s", kw.get('pricelist_id'))
         
@@ -56,7 +57,10 @@ class StudentRegistration(BaseStudentRegistration):
             kw['pricelist_id'] = int(kw.get('pricelist_id'))
         else:
             kw['pricelist_id'] = False
-            
+        
         # Call the parent's registration_create method
-        # Note: Fix the super() call
-        return super().registration_create(**kw)
+        # The main controller now handles parent privileges correctly
+        result = super().registration_create(**kw)
+        
+        _logger.info("=== PRICELIST EXTENSION END ===")
+        return result
