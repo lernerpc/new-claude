@@ -29,14 +29,15 @@
             </xpath>
 
             <xpath expr="//field[@name='display_name']" position="after">
+                <field name="is_parent"/>
                 <field name="printed"/>
                 <field name="first_print_date"/>
                 <field name="last_print_date"/>
                 <field name="is_guardian"/>
                 <field name="is_parking"/>
+                <field name="children_count" string="Children" invisible="not is_parent" optional="1"/>
                 <field name="invoice_count" string="Invoices"/>
                 <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
-
             </xpath>
         </field>
     </record>
@@ -71,6 +72,11 @@
                                 <field name="invoice_count" style="font-size: 16px; font-weight: bold;"/>
                             </div>
 
+                            <div invisible="not is_parent">
+                                <i class="fa fa-users"/>
+                                <strong>Children:</strong>
+                                <field name="children_count" style="font-size: 16px; font-weight: bold;"/>
+                            </div>
 
                         </div>
                     </div>
@@ -78,7 +84,7 @@
             </xpath>
 
             <xpath expr="//sheet" position="inside">
-                <div class="oe_title" invisible="is_parent == False">
+                <div class="oe_title" invisible="not is_parent">
                     <h1>
                         <field name="name" placeholder="Name"/>
                     </h1>
@@ -89,9 +95,10 @@
             </xpath>
 
             <xpath expr="//page[@name='sport_center']" position="replace">
-                <page name="parent_info" string="Parent Information" invisible="is_parent == False">
+                <page name="parent_info" string="Parent Information" invisible="not is_parent">
                     <group>
                         <group string="Parent Details">
+                            <field name="children_count" string="Number of Children"/>
                             <field name="is_guardian"/>
                             <field name="is_parking"/>
                             <field name="printed"/>
@@ -100,17 +107,25 @@
                         </group>
                     </group>
                 </page>
-                <page name="children" string="Children" invisible="is_parent == False">
+                <page name="children" string="Children" invisible="not is_parent">
                     <group>
+                        <div class="oe_title">
+                            <h3>
+                                <field name="children_count" readonly="1"/>
+ Children
+                            </h3>
+                        </div>
                         <field name="child_ids" widget="one2many_list">
                             <tree>
                                 <field name="name"/>
                                 <field name="sport_id" widget="many2many_tags"/>
+                                <field name="is_student"/>
+                                <field name="trainer_id"/>
                             </tree>
                         </field>
                     </group>
                 </page>
-                <page name="sport_center" string="Sport Center" invisible="is_parent == True">
+                <page name="sport_center" string="Sport Center" invisible="is_parent">
                     <group>
                         <group name="sport" string="Sport Details">
                             <field name="is_student"/>

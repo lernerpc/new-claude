@@ -98,23 +98,18 @@ class StudentAdmission(models.Model):
                 if existing_record:
                     raise ValidationError(_('Membership number must be unique for enrolled/student records.'))
 
-    @api.depends('student_id')
+    @api.depends('student_id', 'name')
     def _compute_invoice_ids(self):
         """Compute related invoices for the student"""
         for record in self:
-            # Primary method: Search by student_admission_id (for new invoices)
-            invoices = self.env['account.move'].search([
-                ('student_admission_id', '=', record.id),
-                ('move_type', 'in', ['out_invoice', 'out_refund'])
-            ])
-            
-            # Fallback method: Search by invoice_origin (for old invoices)
-            if not invoices and record.name:
+            # Search by invoice_origin (this is how it was working before)
+            invoices = self.env['account.move']
+            if record.name:
                 invoices = self.env['account.move'].search([
-                    ('invoice_origin', '=', record.name),
-                    ('move_type', 'in', ['out_invoice', 'out_refund'])
+                ('invoice_origin', '=', record.name),
+                ('move_type', 'in', ['out_invoice', 'out_refund'])
                 ])
-            
+        
             record.invoice_ids = invoices
             record.invoice_count = len(invoices)
 

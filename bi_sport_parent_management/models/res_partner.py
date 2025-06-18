@@ -19,10 +19,12 @@ class ResPartner(models.Model):
     disability_description = fields.Text(string="Disability Description")
     is_sport = fields.Boolean(string="Is Sport", readonly=True)
     
-    # Invoice related fields - Hybrid approach for better reliability
-    invoice_ids = fields.One2many('account.move', 'partner_id', string='Direct Invoices')
-    all_invoice_ids = fields.Many2many('account.move', compute='_compute_all_invoice_ids', string='All Invoices')
-    invoice_count = fields.Integer(compute='_compute_all_invoice_ids', string='Invoice Count')
+    # Invoice related fields - Keep original One2many but fix the count and payment state logic
+    invoice_ids = fields.One2many('account.move', 'partner_id', string='Invoices')
+    invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count')
+    
+    # Children count field
+    children_count = fields.Integer(compute='_compute_children_count', string='Children Count')
     
     # Payment status field
     payment_state = fields.Selection([
@@ -34,64 +36,72 @@ class ResPartner(models.Model):
         ('invoicing_legacy', 'Invoicing App Legacy'),
     ], string='Payment Status', compute='_compute_payment_state', store=True, readonly=True)
     
-    @api.depends('invoice_ids', 'is_student')
-    def _compute_all_invoice_ids(self):
-        """Compute all related invoices for the partner"""
-        for record in self:
-            # Start with direct invoices
-            all_invoices = record.invoice_ids.filtered(lambda inv: inv.move_type in ['out_invoice', 'out_refund'])
-            
-            # Additional search for student admission invoices if this partner is a student
-            if record.is_student:
-                admission_invoices = self.env['account.move'].search([
-                    ('student_admission_id.student_id', '=', record.id),
-                    ('move_type', 'in', ['out_invoice', 'out_refund'])
-                ])
-                all_invoices |= admission_invoices
-            
-            record.all_invoice_ids = all_invoices
-            record.invoice_count = len(all_invoices)
+    payment_date = fields.Date(
+        string='Payment Date', 
+        compute='_compute_payment_state', 
+        store=True, 
+        readonly=True,
+        help="Date of the latest payment for this partner"
+    )
     
-    @api.depends('all_invoice_ids.payment_state', 'all_invoice_ids.state')
-    def _compute_payment_state(self):
-        """Compute payment state based on all related invoices"""
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        """Compute invoice count - only count out_invoice and out_refund"""
         for record in self:
-            # Trigger computation of all_invoice_ids first
-            record._compute_all_invoice_ids()
+            # Count only customer invoices and refunds
+            customer_invoices = record.invoice_ids.filtered(
+                lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+            )
+            record.invoice_count = len(customer_invoices)
+    
+    @api.depends('child_ids')
+    def _compute_children_count(self):
+        """Compute children count"""
+        for record in self:
+            record.children_count = len(record.child_ids)
+    
+    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type', 'invoice_ids.invoice_date')
+    def _compute_payment_state(self):
+        """Compute payment state and payment date based on customer invoices only"""
+        for record in self:
+            # Filter only customer invoices (out_invoice, out_refund) that are posted
+            customer_invoices = record.invoice_ids.filtered(
+                lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+            )
             
-            if not record.all_invoice_ids:
+            if not customer_invoices:
                 record.payment_state = 'not_paid'
+                record.payment_date = False
             else:
-                # Filter posted invoices only
-                posted_invoices = record.all_invoice_ids.filtered(lambda inv: inv.state == 'posted')
+                # Filter invoices with valid invoice_date and sort by date
+                invoices_with_date = customer_invoices.filtered(lambda inv: inv.invoice_date)
                 
-                if not posted_invoices:
-                    record.payment_state = 'not_paid'
+                if invoices_with_date:
+                    # Get the latest posted customer invoice
+                    latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)[0]
+                    record.payment_state = latest_invoice.payment_state
+                    record.payment_date = latest_invoice.invoice_date
                 else:
-                    # Filter invoices with valid invoice_date and sort by date
-                    invoices_with_date = posted_invoices.filtered(lambda inv: inv.invoice_date)
-                    
-                    if invoices_with_date:
-                        # Get the latest posted invoice payment state
-                        latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)
-                        record.payment_state = latest_invoice[0].payment_state
-                    else:
-                        # If no invoices have dates, just take the first posted invoice
-                        record.payment_state = posted_invoices[0].payment_state
+                    # If no invoices have dates, just take the first posted customer invoice
+                    latest_invoice = customer_invoices[0]
+                    record.payment_state = latest_invoice.payment_state
+                    record.payment_date = False
             
     def action_view_invoice(self):
         self.ensure_one()
         
-        # Use the computed all_invoice_ids field
-        invoices = self.all_invoice_ids
+        # Get only customer invoices
+        customer_invoices = self.invoice_ids.filtered(
+            lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+        )
         
-        if len(invoices) == 1:
+        if len(customer_invoices) == 1:
             # Single invoice - open in form view
             return {
                 'name': 'Invoice',
                 'type': 'ir.actions.act_window',
                 'res_model': 'account.move',
-                'res_id': invoices[0].id,
+                'res_id': customer_invoices[0].id,
                 'view_mode': 'form',
                 'target': 'current',
             }
@@ -103,7 +113,7 @@ class ResPartner(models.Model):
                 'res_model': 'account.move',
                 'view_mode': 'tree,form',
                 'target': 'current',
-                'domain': [('id', 'in', invoices.ids)],
+                'domain': [('id', 'in', customer_invoices.ids)],
                 'context': {
                     'default_move_type': 'out_invoice',
                     'default_partner_id': self.id,
