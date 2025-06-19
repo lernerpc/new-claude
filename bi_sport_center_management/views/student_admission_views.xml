@@ -107,7 +107,8 @@
                         </div>
                     </div>
                     <button string="Enroll" name="action_enroll" type="object" class="oe_highlight" invisible="state != 'new'"/>
-                    <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/>
+                    <!-- <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/> -->
+                    <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="1"/>
                     <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'student']"/>
                     <button name="reset_to_new" string="Reset to New" type="object" class="oe_highlight" invisible="state != 'cancel'"/>
                     <field name="state" widget="statusbar" statusbar_visible="new,enrolled,student,cancel"/>
@@ -142,6 +143,11 @@
                             <field name="check_parent" invisible="1"/>
                             <field name="check_register" invisible="1" readonly="1"/>
                         </group>
+                        <group string="Student Photo">
+                            <field name="student_photo" widget="image" class="oe_avatar" options="{'size': [150, 150]}"/>
+                        </group>
+                    </group>
+                    <group>
                         <group string="Sport Activity Details">
                             <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" readonly="state in ['cancel', 'student']"/>
                             <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" readonly="state in ['cancel', 'student']"/>
@@ -155,6 +161,9 @@
                         <group string="Parent Information">
                             <field name="is_guardian"/>
                             <field name="is_parking"/>
+                        </group>
+                        <group string="Parent Photo">
+                            <field name="parent_photo" widget="image" class="oe_avatar" options="{'size': [150, 150]}"/>
                         </group>
                     </group>
                     <field name="disability_description" placeholder="Describe disability..." invisible="is_disability == False"/>

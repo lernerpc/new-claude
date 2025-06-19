@@ -32,50 +32,39 @@
     page-break-inside: avoid;
 }
 
-
-
-
-
 .id-card {
     width: 86mm;
     height: 54mm;
-
     position: relative;
-
     background-image: url('/bi_sport_patch/static/src/img/front_new.jpg');
     background-size: cover;          
     background-repeat: no-repeat;   
     background-position: center;
-
-
     color: #0B1E52;
     font-weight:400;    
-    
     border-radius: 5px;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
     overflow: hidden;     
 }
 
         .id-photo {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <!-- width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <!-- width: 100%;
             height: auto;
             max-height: 100%; -->
         }
 
         .qr-code {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <!-- width: 16mm;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <!-- width: 16mm;
             height: 16mm;
             height: auto;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             border-radius: 5px;
             border: #f8f9fa solid 1px;
             margin-top: 2px; -->
-
-
         }
 
         .student-photo {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <!-- border-radius: 50%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <!-- border-radius: 50%;
             width: 50px;
             height: 50px; -->
         }
@@ -84,6 +73,29 @@
             background-color: rgba(255, 255, 255, 0.1);
             margin-inline: 2px;
             padding-top: 2px;
+        }
+
+        .sport-activities {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 1mm 2mm;
+            font-size: 2.2mm;
+            line-height: 1.2;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .sport-activities-title {
+            font-weight: 600;
+            color: #0B1E52;
+            margin-bottom: 0.5mm;
+            font-size: 2.2mm;
+        }
+
+        .sport-activity-item {
+            color: #555;
+            font-size: 2mm;
+            display: inline;
         }
 
         @media print {
@@ -96,15 +108,6 @@
                 page-break-inside: avoid;
             }
         }
-
-
-
-
-
-
-
-
-
 
  .id-card-back {
             width: 86mm;
@@ -129,7 +132,6 @@
             z-index: 0;
         }
 
-
         .id-card-back-content {
             position: relative;
             z-index: 1;
@@ -153,9 +155,6 @@
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
             margin-bottom: 4px;
         }
-
-
-
 
             .page-break {
                 display: none;
@@ -189,10 +188,10 @@
 
                     <div class="id-card p-2 mt-2">
 
-                        <div class="row" style="position: absolute; top: 25mm; width: 100%; margin: 0;">
+                        <div class="row" style="position: absolute; top: 21mm; width: 100%; margin: 0;">
 
-                            <!-- Photo Column (col-3) -->
-                            <div class="col-2 text-center" style="padding: 0; height: 29mm;">
+                            <!-- Photo Column (col-2) -->
+                            <div class="col-2 text-center" style="padding: 0; height: 36mm;">
                                 <img class="student-photo" t-if="student.student_id.image_1920" t-att-src="image_data_uri(student.student_id.image_1920)" alt="Member" style="
                                 height: 22.5mm;
                                 width: 16mm;
@@ -202,20 +201,20 @@
                             </div>
 
                             <!-- Info Column (col-7) -->
-                            <div class="col-7" style="padding-top: 0mm;padding-bottom:4.5mm;padding-right:4mm; padding-left:4mm; height: 29mm; font-size: 3mm; line-height: 1.4;">
-                                <div style="margin-bottom: 2mm;">
+                            <div class="col-7" style="padding-top: 0mm;padding-bottom:4.5mm;padding-right:4mm; padding-left:4mm; height: 36mm; font-size: 3mm; line-height: 1.4;">
+                                <div style="margin-bottom: 0.5mm;">
                                     <strong>الاسم</strong>
                                     <span style="margin-inline-start: 2mm;">
                                         <t t-esc="student.student_id.name"/>
                                     </span>
                                 </div>
-                                <div style="margin-bottom: 2mm;">
+                                <div style="margin-bottom: 0.5mm;">
                                     <strong>رقم الاستمارة</strong>
                                     <span style="margin-inline-start: 2mm;">
                                         <t t-esc="student.membership_number"/>
                                     </span>
                                 </div>
-                                <div style="margin-bottom: 2mm;">
+                                <div style="margin-bottom: 0.5mm;">
                                     <strong>رقم العضوية</strong>
                                     <span style="margin-inline-start: 2mm;">
                                         <t t-esc="student.name"/>
@@ -223,19 +222,35 @@
                                 </div>
 
                                 <t t-if="student.academic_subtype">
-                                    <div t-if="student.academic_subtype == '7star'" class="transparent-bg" style="margin-top: 1mm;">
+                                    <div t-if="student.academic_subtype == '7star'" class="transparent-bg" style="margin-bottom: 0.5mm;">
                                         <strong>أكاديمية</strong>
                                         <span style="margin-inline-start: 2mm;">7 ستار ⭐</span>
                                     </div>
-                                    <div t-elif="student.academic_subtype == 'academic'" class="transparent-bg" style="margin-top: 1mm;">
+                                    <div t-elif="student.academic_subtype == 'academic'" class="transparent-bg" style="margin-bottom: 0.5mm;">
                                         <strong>أكاديمية</strong>
                                         <span style="margin-inline-start: 2mm;">الأكاديمية 🏫</span>
+                                    </div>
+                                </t>
+
+                                <!-- Sport Activities below academic info -->
+                                <t t-if="student.activity_ids and student.member_type == 'regular'">
+                                    <div style="font-size: 2.8mm; line-height: 1.3;">
+                                        <strong style="color: #0B1E52;">الأنشطة الرياضية:</strong>
+                                        <span style="margin-inline-start: 3mm;">
+                                            <t t-foreach="student.activity_ids" t-as="activity">
+                                                <t t-if="activity.name != 'أكاديمية'">
+                                                    <span style="background: linear-gradient(135deg, #4A90E2, #357ABD); color: white; padding: 1mm 2mm; border-radius: 8px; font-size: 2.2mm; font-weight: 600; margin-inline-end: 2mm; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.2); font-family: 'Arial', sans-serif; letter-spacing: 0.2mm;">
+                                                        <t t-esc="activity.name"/>
+                                                    </span>
+                                                </t>
+                                            </t>
+                                        </span>
                                     </div>
                                 </t>
                             </div>
 
                             <!-- QR Code Column (col-2) -->
-                            <div class="col-2" style="padding: 2mm; height: 29mm; position: relative;">
+                            <div class="col-2" style="padding: 2mm; height: 36mm; position: relative;">
                                 <div style="position: absolute; bottom: 4.5mm; left: 40%; transform: translateX(-40%);text-align: center;">
                                     <img class="qr-code" t-if="student.student_id.qr_code" t-att-src="image_data_uri(student.student_id.qr_code)" alt="QR Code" style="height: 16mm; width: 16mm; object-fit: contain;" />
                                     <div style="width: 16mm; font-size: 6pt; font-weight: 600; color: #333; margin-top: 1mm; text-align: center;">

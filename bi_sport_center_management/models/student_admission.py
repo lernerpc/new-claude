@@ -3,6 +3,9 @@
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class StudentAdmission(models.Model):
     _name = "student.admission"
@@ -23,6 +26,7 @@ class StudentAdmission(models.Model):
     gender = fields.Selection([('male', 'ذكر'), ('female', 'أنثى')], string='الجنس', related='student_id.gender', store=True, readonly=False)
     is_disability = fields.Boolean('هل يوجد أي مرض', related='student_id.is_disability', store=True, readonly=False)
     disability_description = fields.Text('وصف المرض', related='student_id.disability_description', store=True, readonly=False)
+    
     # Add member_type field with proper labels
     member_type = fields.Selection([
         ('regular', 'عضو رياضي'),
@@ -65,24 +69,89 @@ class StudentAdmission(models.Model):
         ('invoicing_legacy', 'Invoicing App Legacy'),
     ], string='Payment Status', compute='_compute_payment_state', store=True, readonly=True)
 
-
     payment_date = fields.Date(
-    string='Payment Date', 
-    compute='_compute_payment_state', 
-    store=True, 
-    readonly=True,
-    help="Date of the latest payment for this student"
-)
+        string='Payment Date', 
+        compute='_compute_payment_state', 
+        store=True, 
+        readonly=True,
+        help="Date of the latest payment for this student"
+    )
 
     invoice_ids = fields.One2many('account.move', compute='_compute_invoice_ids', string='Invoices')
     invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count')
 
     membership_number = fields.Char('رقم الاستمارة')
 
-    # Remove the SQL constraint and add Python validation instead
-    # _sql_constraints = [
-    #     ('membership_number_unique', 'UNIQUE(membership_number)', 'Membership number must be unique.')
-    # ]
+    @api.onchange('student_photo')
+    def _onchange_student_photo(self):
+        """Sync student photo to res.partner when changed in admission"""
+        if self.student_photo and self.student_id:
+            self.student_id.image_1920 = self.student_photo
+
+    @api.onchange('student_id')
+    def _onchange_student_id(self):
+        """Load student photo from res.partner when student is selected"""
+        if self.student_id and self.student_id.image_1920:
+            self.student_photo = self.student_id.image_1920
+
+    def write(self, vals):
+        """Override write to maintain photo synchronization"""
+        result = super(StudentAdmission, self).write(vals)
+        
+        # Sync student photo to res.partner
+        if 'student_photo' in vals:
+            for record in self:
+                if record.student_id and record.student_photo:
+                    record.student_id.write({'image_1920': record.student_photo})
+        
+        # Handle parent privilege updates
+        if 'is_guardian' in vals or 'is_parking' in vals:
+            for record in self:
+                if record.parent_id:
+                    _logger.info("=== WRITE: UPDATING PARENT PRIVILEGES ===")
+                    _logger.info("Current admission: Guardian=%s, Parking=%s", record.is_guardian, record.is_parking)
+                    record.parent_id.update_parent_privileges_or_logic(record.is_guardian, record.is_parking)
+                    _logger.info("✅ WRITE: Parent privileges updated using OR logic")
+            
+        return result
+
+    def _ensure_parent_privileges_or_logic(self):
+        """
+        Ensure parent privileges follow OR logic across all children.
+        This should be called whenever a student's privileges change.
+        """
+        for record in self:
+            if not record.parent_id:
+                continue
+                
+            parent = record.parent_id
+            
+            # Get all children (students) of this parent
+            all_children = self.env['res.partner'].search([
+                ('parent_id', '=', parent.id),
+                ('is_student', '=', True)
+            ])
+            
+            # Calculate what parent should have based on ALL children
+            should_have_guardian = any(child.is_guardian for child in all_children)
+            should_have_parking = any(child.is_parking for child in all_children)
+            
+            _logger.info("=== PARENT PRIVILEGE CHECK ===")
+            _logger.info("Parent: %s (ID: %s)", parent.name, parent.id)
+            _logger.info("Found %d children", len(all_children))
+            _logger.info("Current parent: Guardian=%s, Parking=%s", parent.is_guardian, parent.is_parking)
+            _logger.info("Should be: Guardian=%s, Parking=%s", should_have_guardian, should_have_parking)
+            
+            # Update parent if needed
+            if parent.is_guardian != should_have_guardian or parent.is_parking != should_have_parking:
+                _logger.info("Updating parent privileges...")
+                parent.write({
+                    'is_guardian': should_have_guardian,
+                    'is_parking': should_have_parking,
+                })
+                _logger.info("✅ Parent privileges updated successfully")
+            else:
+                _logger.info("✅ Parent privileges already correct")
 
     @api.constrains('membership_number', 'state')
     def _check_membership_number_unique(self):
@@ -119,13 +188,16 @@ class StudentAdmission(models.Model):
         for record in self:
             if not record.invoice_ids:
                 record.payment_state = 'not_paid'
+                record.payment_date = False
             else:
                 # Get the latest invoice payment state
                 latest_invoice = record.invoice_ids.filtered(lambda inv: inv.state == 'posted').sorted('invoice_date', reverse=True)
                 if latest_invoice:
                     record.payment_state = latest_invoice[0].payment_state
+                    record.payment_date = latest_invoice[0].invoice_date
                 else:
                     record.payment_state = 'not_paid'
+                    record.payment_date = False
 
     @api.constrains('student_national_id', 'parent_national_id', 'mobile', 'parent_mobile')
     def _check_national_id_and_mobile(self):
@@ -190,6 +262,11 @@ class StudentAdmission(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('student.admission') or _('New')
         res = super(StudentAdmission, self).create(vals_list)
         
+        # Sync student photo to res.partner after creation
+        for record in res:
+            if record.student_photo and record.student_id:
+                record.student_id.write({'image_1920': record.student_photo})
+        
         # Only create portal access if email is provided
         if res.email and res.email.strip():
             portal_wizard_obj = self.env['portal.wizard']
@@ -211,6 +288,13 @@ class StudentAdmission(models.Model):
         self.state = 'enrolled'
         self.student_id.update({'is_student': False})
 
+        # CRITICAL: Use OR logic to update parent privileges
+        if self.parent_id:
+            _logger.info("=== ENROLL: UPDATING PARENT PRIVILEGES ===")
+            _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
+            self.parent_id.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+            _logger.info("✅ ENROLL: Parent privileges updated using OR logic")
+
         # Only send email if email address is provided
         if self.email and self.email.strip():
             template = self.env.ref('bi_sport_center_management.student_admission_enroll_email_template')
@@ -227,49 +311,68 @@ class StudentAdmission(models.Model):
         }
 
     def action_make_student(self):
-        """Override to handle different member types"""
+        """Override to handle different member types - FIXED VERSION"""
         if not self.is_invoiced:
             return {
-                'name': 'Create Invoice',
-                'view_mode': 'form',
-                'res_model': 'create.invoice',
-                'type': 'ir.actions.act_window',
-                'context': self._context,
-                'target': 'new',
+            'name': 'Create Invoice',
+            'view_mode': 'form',
+            'res_model': 'create.invoice',
+            'type': 'ir.actions.act_window',
+            'context': self._context,
+            'target': 'new',
             }
         if self.is_invoiced:
             self.state = 'student'
 
+            # Update parent photo if provided
             if self.parent_id and self.parent_photo:
                 self.parent_id.write({
-                    'parent_image_1920': self.parent_photo,
-                    'image_1920': self.parent_photo,
+                'parent_image_1920': self.parent_photo,
+                'image_1920': self.parent_photo,
                 })
 
+        # Update student record
             student_vals = {
-                'is_student': True,
-            }
-            
-            # Only add sports for regular members or if activities exist
+            'is_student': True,
+            # CRITICAL: Update student's individual privileges (NOT parent's)
+            'is_guardian': self.is_guardian,
+            'is_parking': self.is_parking,
+        }
+        
+        # Only add sports for regular members or if activities exist
             if self.member_type == 'regular' and self.activity_ids:
-                # Filter out academic products for regular members
+            # Filter out academic products for regular members
                 sports_activities = self.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
                 if sports_activities:
                     student_vals['sport_id'] = [(6, 0, sports_activities.ids)]
             elif self.member_type == 'academic':
-                # Academic members don't get sport assignments
+            # Academic members don't get sport assignments
                 student_vals['sport_id'] = [(6, 0, [])]
 
-            # Sync student photo if present
+        # Sync student photo if present
             if hasattr(self, 'student_photo') and self.student_photo:
                 student_vals['image_1920'] = self.student_photo
 
+        # Update the student record
             self.student_id.update(student_vals)
 
+        # CRITICAL FIX: Use OR logic method instead of _ensure_parent_privileges_or_logic
+            if self.parent_id:
+                _logger.info("=== MAKE STUDENT: UPDATING PARENT PRIVILEGES ===")
+                _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
+            
+            # Use the OR logic method to properly update parent privileges
+                self.parent_id.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+            
+                _logger.info("✅ MAKE STUDENT: Parent privileges updated using OR logic")
+                
     def action_cancel(self):
         for record in self:
             if record.state == 'new':
                 record.state = 'cancel'
+                
+                # CRITICAL: After cancelling, recalculate parent privileges
+                record._ensure_parent_privileges_or_logic()
             else:
                 raise ValidationError(_("Only new registrations can be cancelled"))
 
@@ -285,6 +388,9 @@ class StudentAdmission(models.Model):
                 record.write({
                     'state': 'new'
                 })
+                
+                # CRITICAL: After resetting, recalculate parent privileges
+                record._ensure_parent_privileges_or_logic()
             else:
                 raise ValidationError(_("Only cancelled registrations can be reset to new"))
 

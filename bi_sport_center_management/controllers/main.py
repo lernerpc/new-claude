@@ -96,7 +96,7 @@ class StudentRegistration(http.Controller):
                         _logger.error("Error processing student photo: %s", str(e))
 
                 # =================================================================
-                # PARENT CREATION/UPDATE LOGIC - FIXED VERSION
+                # PARENT CREATION/UPDATE LOGIC - ENHANCED VERSION WITH OR LOGIC
                 # =================================================================
                 
                 parent_partner = None
@@ -128,29 +128,16 @@ class StudentRegistration(http.Controller):
                 }
 
                 if parent_partner:
-                    # EXISTING PARENT - Apply OR logic
+                    # EXISTING PARENT - Use the update_parent_privileges_or_logic method
                     _logger.info("Found existing parent: %s (ID: %s)", parent_partner.name, parent_partner.id)
                     
-                    # Get current parent values
-                    existing_guardian = parent_partner.is_guardian or False
-                    existing_parking = parent_partner.is_parking or False
-                    
-                    _logger.info("Existing parent: Guardian=%s, Parking=%s", existing_guardian, existing_parking)
-                    
-                    # Calculate final values using OR logic
-                    final_guardian = existing_guardian or current_is_guardian
-                    final_parking = existing_parking or current_is_parking
-                    
-                    _logger.info("OR Logic result: Guardian=%s, Parking=%s", final_guardian, final_parking)
-                    
-                    # Add privilege values to parent_vals
-                    parent_vals['is_guardian'] = final_guardian
-                    parent_vals['is_parking'] = final_parking
-                    
-                    # Update the parent
+                    # Update basic parent information first
                     parent_partner.write(parent_vals)
                     
-                    _logger.info("✅ EXISTING PARENT UPDATED: Guardian=%s, Parking=%s", final_guardian, final_parking)
+                    # Then update privileges using OR logic
+                    parent_partner.update_parent_privileges_or_logic(current_is_guardian, current_is_parking)
+                    
+                    _logger.info("✅ EXISTING PARENT UPDATED with OR logic")
                     
                 else:
                     # NEW PARENT - Use current child's values
@@ -265,38 +252,18 @@ class StudentRegistration(http.Controller):
                     admission = request.env['student.admission'].sudo().create(admission_vals)
 
                     # =================================================================
-                    # SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT
+                    # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT
                     # =================================================================
                     if admission and admission.parent_id:
-                        parent = admission.parent_id
+                        _logger.info("FINAL SAFETY NET: Ensuring parent privileges are correct")
                         
-                        # Get all children of this parent
-                        all_children = request.env['res.partner'].sudo().search([
-                            ('parent_id', '=', parent.id),
-                            ('is_student', '=', True)
-                        ])
+                        # Use the proven OR logic update method one more time
+                        admission.parent_id.update_parent_privileges_or_logic(
+                            admission.is_guardian, 
+                            admission.is_parking
+                        )
                         
-                        # Calculate what parent should have based on ALL children
-                        should_have_guardian = any(child.is_guardian for child in all_children)
-                        should_have_parking = any(child.is_parking for child in all_children)
-                        
-                        _logger.info("SAFETY NET: Parent should have Guardian=%s, Parking=%s based on %d children", 
-                                    should_have_guardian, should_have_parking, len(all_children))
-                        
-                        # Check if parent needs updating
-                        if parent.is_guardian != should_have_guardian or parent.is_parking != should_have_parking:
-                            _logger.info("SAFETY NET: Correcting parent values")
-                            _logger.info("  Current: Guardian=%s, Parking=%s", parent.is_guardian, parent.is_parking)
-                            
-                            parent.write({
-                                'is_guardian': should_have_guardian,
-                                'is_parking': should_have_parking,
-                            })
-                            request.env.cr.commit()
-                            _logger.info("SAFETY NET: Parent corrected to Guardian=%s, Parking=%s", 
-                                        should_have_guardian, should_have_parking)
-                        else:
-                            _logger.info("SAFETY NET: Parent values are already correct")
+                        _logger.info("FINAL SAFETY NET: Parent privileges confirmed")
                     
                     if member_type == 'academic':
                         message = 'تم التسجيل بنجاح كعضو أكاديمي'
@@ -736,4 +703,4 @@ class EventPortal(CustomerPortal):
 
         pdf = request.env["ir.actions.report"].sudo()._render_qweb_pdf('event.action_report_event_registration_full_page_ticket', event_sudo.id)[0]
         report_name = event_sudo.name + '.pdf'
-        return request.make_response(pdf, headers=[('Content-Type', 'application/pdf'), ('Content-Disposition', content_disposition(report_name))])
+        return request.sresponse(pdf, headers=[('Content-Type', 'application/pdf'), ('Content-Disposition', content_disposition(report_name))])
