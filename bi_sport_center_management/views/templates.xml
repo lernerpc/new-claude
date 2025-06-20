@@ -950,7 +950,7 @@
                 </div>
 
                 <script type="text/javascript">
-//                                                                                                                                                                                                                                                                                        <![CDATA[
+//                                                                                                                                                                                                                                                                                                                                                    <![CDATA[
 document.addEventListener('DOMContentLoaded', function() {
     // Price calculation variables
     let selectedActivities = [];
@@ -1669,9 +1669,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <input type="radio" id="regular_member" name="member_type" value="regular" class="form-check-input" required="1" style="margin-top: 8px; transform: scale(1.2);"/>
                                                 <label for="regular_member" class="form-check-label" style="font-size: 16px; font-weight: 600; color: #007bff; cursor: pointer; display: block; margin-left: 25px;">
                                                     <i class="fa fa-running" style="margin-left: 8px;"></i>
-                    عضو رياضي (اختيار الأنشطة الرياضية)
+                    عضو رياضي أو ثقافي (يمكنك من هنا اختيار جميع الأنشطة الرياضية والثقافية )
                                                     <small style="display: block; color: #6c757d; font-weight: normal; margin-top: 5px;">
-                        يمكنك الاشتراك في الأنشطة الرياضية المختلفة والاستفادة من جميع المرافق الرياضية
+                        يمكنك الاشتراك في الأنشطة الرياضية والثقافية المختلفة والاستفادة من المرافق المختلفة 
                                                     </small>
                                                 </label>
                                             </div>
@@ -1683,9 +1683,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <input type="radio" id="academic_member" name="member_type" value="academic" class="form-check-input" required="1" style="margin-top: 8px; transform: scale(1.2);"/>
                                                 <label for="academic_member" class="form-check-label" style="font-size: 16px; font-weight: 600; color: #17a2b8; cursor: pointer; display: block; margin-left: 25px;">
                                                     <i class="fa fa-graduation-cap" style="margin-left: 8px;"></i>
-                    عضو أكاديمي (بطاقة هوية فقط - بدون أنشطة رياضية)
+                     أكاديميات (  أكاديمية - 7 ستار )
                                                     <small style="display: block; color: #6c757d; font-weight: normal; margin-top: 5px;">
-                        بطاقة هوية رسمية للكلية للأغراض الأكاديمية فقط
+                        بطاقة هوية رسمية لدخول الكلية فقط
                                                     </small>
                                                 </label>
                                             </div>
