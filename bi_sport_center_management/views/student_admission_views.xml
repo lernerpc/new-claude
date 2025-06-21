@@ -16,6 +16,7 @@
                 <field name="activity_ids" widget="many2many_tags" required="1"/>
                 <field name="state" widget="badge" decoration-warning="state == 'enrolled'" decoration-primary="state == 'new'" decoration-success="state == 'student'"/>
                 <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
+                <field name="payment_date" string="Payment Date"/>
                 <field name="invoice_count" string="Invoices"/>
             </tree>
         </field>

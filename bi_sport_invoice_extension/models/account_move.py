@@ -325,3 +325,119 @@ class AccountMove(models.Model):
                     'sticky': False,
                 }
             }
+
+
+
+
+    def _compute_payments_widget_reconciled_info(self):
+        """Override to trigger student admission payment date update"""
+        result = super()._compute_payments_widget_reconciled_info()
+        
+        # Update payment dates for related student admissions when payment state changes
+        for move in self:
+            if move.invoice_origin and move.move_type == 'out_invoice':
+                # Find related student admission by invoice_origin
+                admission = self.env['student.admission'].search([
+                    ('name', '=', move.invoice_origin)
+                ], limit=1)
+                if admission:
+                    # Trigger recomputation of payment state and date
+                    admission._compute_payment_state()
+        
+        return result
+    
+    def _reconcile_payments(self, writeoff_acc_id=False, writeoff_journal_id=False):
+        """Override to update student admission payment date when reconciliation occurs"""
+        result = super()._reconcile_payments(writeoff_acc_id, writeoff_journal_id)
+        
+        # Update payment dates for related student admissions
+        for move in self:
+            if move.invoice_origin and move.move_type == 'out_invoice':
+                admission = self.env['student.admission'].search([
+                    ('name', '=', move.invoice_origin)
+                ], limit=1)
+                if admission:
+                    admission._compute_payment_state()
+        
+        return result
+
+    def js_assign_outstanding_line(self, line_id):
+        """Override to update payment date when outstanding line is assigned"""
+        result = super().js_assign_outstanding_line(line_id)
+        
+        # Update payment date for related student admission
+        if self.invoice_origin and self.move_type == 'out_invoice':
+            admission = self.env['student.admission'].search([
+                ('name', '=', self.invoice_origin)
+            ], limit=1)
+            if admission:
+                admission._compute_payment_state()
+        
+        return result
+
+    def js_remove_outstanding_partial(self, partial_id):
+        """Override to update payment date when outstanding partial is removed"""
+        result = super().js_remove_outstanding_partial(partial_id)
+        
+        # Update payment date for related student admission
+        if self.invoice_origin and self.move_type == 'out_invoice':
+            admission = self.env['student.admission'].search([
+                ('name', '=', self.invoice_origin)
+            ], limit=1)
+            if admission:
+                admission._compute_payment_state()
+        
+        return result
+
+    def action_post(self):
+        """Override to update admission payment state when invoice is posted"""
+        result = super().action_post()
+        
+        # Update payment state for related admissions when invoice is posted
+        for move in self:
+            if move.invoice_origin and move.move_type == 'out_invoice':
+                admission = self.env['student.admission'].search([
+                    ('name', '=', move.invoice_origin)
+                ], limit=1)
+                if admission:
+                    admission._compute_payment_state()
+        
+        return result
+
+    def write(self, vals):
+        """Override write to trigger payment date update when payment state changes"""
+        result = super().write(vals)
+        
+        # If payment_state or reconciliation changed, update student admission
+        if 'payment_state' in vals or any('reconciled' in str(k) for k in vals.keys()):
+            for move in self:
+                if move.invoice_origin and move.move_type == 'out_invoice':
+                    admission = self.env['student.admission'].search([
+                        ('name', '=', move.invoice_origin)
+                    ], limit=1)
+                    if admission:
+                        # Use sudo to avoid access issues and force recomputation
+                        admission.sudo()._compute_payment_state()
+        
+        return result
+
+
+class AccountPayment(models.Model):
+    _inherit = 'account.payment'
+
+    def action_post(self):
+        """Override to update student admission payment dates when payment is posted"""
+        result = super().action_post()
+        
+        # Update student admissions when payment is reconciled with invoices
+        for payment in self:
+            if payment.reconciled_invoice_ids:
+                for invoice in payment.reconciled_invoice_ids:
+                    if invoice.invoice_origin and invoice.move_type == 'out_invoice':
+                        admission = self.env['student.admission'].search([
+                            ('name', '=', invoice.invoice_origin)
+                        ], limit=1)
+                        if admission:
+                            admission.sudo()._compute_payment_state()
+        
+        return result
