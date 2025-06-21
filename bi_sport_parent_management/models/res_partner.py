@@ -175,12 +175,37 @@ class ResPartner(models.Model):
         
         self.env.cr.commit()
     
-    @api.depends('invoice_ids')
+    def _get_all_invoices(self):
+        """Get all invoices for this partner, including children's invoices if this is a parent"""
+        self.ensure_one()
+        
+        if self.is_parent:
+            # For parents, get invoices from all children
+            children = self.env['res.partner'].search([('parent_id', '=', self.id)])
+            all_invoice_ids = []
+            
+            # Add parent's own invoices
+            all_invoice_ids.extend(self.invoice_ids.ids)
+            
+            # Add children's invoices
+            for child in children:
+                all_invoice_ids.extend(child.invoice_ids.ids)
+            
+            # Return unique invoices
+            return self.env['account.move'].browse(list(set(all_invoice_ids)))
+        else:
+            # For non-parents, return only their own invoices
+            return self.invoice_ids
+    
+    @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_invoice_count(self):
-        """Compute invoice count - only count out_invoice and out_refund"""
+        """Compute invoice count - for parents, include children's invoices"""
         for record in self:
+            # Get all invoices (including children's if this is a parent)
+            all_invoices = record._get_all_invoices()
+            
             # Count only customer invoices and refunds
-            customer_invoices = record.invoice_ids.filtered(
+            customer_invoices = all_invoices.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
             record.invoice_count = len(customer_invoices)
@@ -191,12 +216,16 @@ class ResPartner(models.Model):
         for record in self:
             record.children_count = len(record.child_ids)
     
-    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type', 'invoice_ids.invoice_date')
+    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type', 'invoice_ids.invoice_date',
+                 'child_ids.invoice_ids.payment_state', 'child_ids.invoice_ids.state', 'child_ids.invoice_ids.move_type', 'child_ids.invoice_ids.invoice_date')
     def _compute_payment_state(self):
-        """Compute payment state and payment date based on customer invoices only"""
+        """Compute payment state and payment date - for parents, consider children's invoices"""
         for record in self:
+            # Get all invoices (including children's if this is a parent)
+            all_invoices = record._get_all_invoices()
+            
             # Filter only customer invoices (out_invoice, out_refund) that are posted
-            customer_invoices = record.invoice_ids.filtered(
+            customer_invoices = all_invoices.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
             )
             
@@ -221,8 +250,11 @@ class ResPartner(models.Model):
     def action_view_invoice(self):
         self.ensure_one()
         
+        # Get all invoices (including children's if this is a parent)
+        all_invoices = self._get_all_invoices()
+        
         # Get only customer invoices
-        customer_invoices = self.invoice_ids.filtered(
+        customer_invoices = all_invoices.filtered(
             lambda inv: inv.move_type in ['out_invoice', 'out_refund']
         )
         
