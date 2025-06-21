@@ -175,40 +175,34 @@ class ResPartner(models.Model):
         
         self.env.cr.commit()
     
-    def _get_all_invoices(self):
-        """Get all invoices for this partner, including children's invoices if this is a parent"""
-        self.ensure_one()
-        
-        if self.is_parent:
-            # For parents, get invoices from all children
-            children = self.env['res.partner'].search([('parent_id', '=', self.id)])
-            all_invoice_ids = []
-            
-            # Add parent's own invoices
-            all_invoice_ids.extend(self.invoice_ids.ids)
-            
-            # Add children's invoices
-            for child in children:
-                all_invoice_ids.extend(child.invoice_ids.ids)
-            
-            # Return unique invoices
-            return self.env['account.move'].browse(list(set(all_invoice_ids)))
-        else:
-            # For non-parents, return only their own invoices
-            return self.invoice_ids
-    
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_invoice_count(self):
-        """Compute invoice count - for parents, include children's invoices"""
+        """Compute invoice count - include children's invoices for parents"""
         for record in self:
-            # Get all invoices (including children's if this is a parent)
-            all_invoices = record._get_all_invoices()
-            
-            # Count only customer invoices and refunds
-            customer_invoices = all_invoices.filtered(
-                lambda inv: inv.move_type in ['out_invoice', 'out_refund']
-            )
-            record.invoice_count = len(customer_invoices)
+            if record.is_parent:
+                # For parents: count their own invoices + all children's invoices
+                parent_invoices = record.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+                )
+                
+                # Get all children's invoices
+                children_invoices = self.env['account.move']
+                for child in record.child_ids:
+                    child_customer_invoices = child.invoice_ids.filtered(
+                        lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+                    )
+                    children_invoices |= child_customer_invoices
+                
+                # Combine parent and children invoices
+                all_invoices = parent_invoices | children_invoices
+                record.invoice_count = len(all_invoices)
+                
+            else:
+                # For non-parents: only count their own invoices
+                customer_invoices = record.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+                )
+                record.invoice_count = len(customer_invoices)
     
     @api.depends('child_ids')
     def _compute_children_count(self):
@@ -216,67 +210,110 @@ class ResPartner(models.Model):
         for record in self:
             record.children_count = len(record.child_ids)
     
-    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type', 'invoice_ids.invoice_date',
-                 'child_ids.invoice_ids.payment_state', 'child_ids.invoice_ids.state', 'child_ids.invoice_ids.move_type', 'child_ids.invoice_ids.invoice_date')
+    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type', 
+                 'invoice_ids.invoice_date', 'child_ids.invoice_ids.payment_state', 
+                 'child_ids.invoice_ids.state', 'child_ids.invoice_ids.move_type', 
+                 'child_ids.invoice_ids.invoice_date')
     def _compute_payment_state(self):
-        """Compute payment state and payment date - for parents, consider children's invoices"""
+        """Compute payment state - include children's invoices for parents"""
         for record in self:
-            # Get all invoices (including children's if this is a parent)
-            all_invoices = record._get_all_invoices()
-            
-            # Filter only customer invoices (out_invoice, out_refund) that are posted
-            customer_invoices = all_invoices.filtered(
-                lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
-            )
-            
-            if not customer_invoices:
-                record.payment_state = 'not_paid'
-                record.payment_date = False
-            else:
-                # Filter invoices with valid invoice_date and sort by date
-                invoices_with_date = customer_invoices.filtered(lambda inv: inv.invoice_date)
+            if record.is_parent:
+                # For parents: consider their own + children's invoices
+                parent_invoices = record.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+                )
                 
-                if invoices_with_date:
-                    # Get the latest posted customer invoice
-                    latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)[0]
-                    record.payment_state = latest_invoice.payment_state
-                    record.payment_date = latest_invoice.invoice_date
-                else:
-                    # If no invoices have dates, just take the first posted customer invoice
-                    latest_invoice = customer_invoices[0]
-                    record.payment_state = latest_invoice.payment_state
+                # Add children's posted invoices
+                all_invoices = parent_invoices
+                for child in record.child_ids:
+                    child_invoices = child.invoice_ids.filtered(
+                        lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+                    )
+                    all_invoices |= child_invoices
+                
+                if not all_invoices:
+                    record.payment_state = 'not_paid'
                     record.payment_date = False
+                else:
+                    # Get the latest invoice and its payment state
+                    invoices_with_date = all_invoices.filtered(lambda inv: inv.invoice_date)
+                    
+                    if invoices_with_date:
+                        latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = latest_invoice.invoice_date
+                    else:
+                        latest_invoice = all_invoices[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = False
+                        
+            else:
+                # For non-parents: only consider their own invoices (original logic)
+                customer_invoices = record.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+                )
+                
+                if not customer_invoices:
+                    record.payment_state = 'not_paid'
+                    record.payment_date = False
+                else:
+                    # Filter invoices with valid invoice_date and sort by date
+                    invoices_with_date = customer_invoices.filtered(lambda inv: inv.invoice_date)
+                    
+                    if invoices_with_date:
+                        # Get the latest posted customer invoice
+                        latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = latest_invoice.invoice_date
+                    else:
+                        # If no invoices have dates, just take the first posted customer invoice
+                        latest_invoice = customer_invoices[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = False
             
     def action_view_invoice(self):
+        """View invoices - include children's invoices for parents"""
         self.ensure_one()
         
-        # Get all invoices (including children's if this is a parent)
-        all_invoices = self._get_all_invoices()
+        if self.is_parent:
+            # For parents: show their own + children's invoices
+            parent_invoices = self.invoice_ids.filtered(
+                lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+            )
+            
+            # Add children's invoices
+            all_invoices = parent_invoices
+            for child in self.child_ids:
+                child_invoices = child.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+                )
+                all_invoices |= child_invoices
+                
+        else:
+            # For non-parents: only their own invoices
+            all_invoices = self.invoice_ids.filtered(
+                lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+            )
         
-        # Get only customer invoices
-        customer_invoices = all_invoices.filtered(
-            lambda inv: inv.move_type in ['out_invoice', 'out_refund']
-        )
-        
-        if len(customer_invoices) == 1:
+        if len(all_invoices) == 1:
             # Single invoice - open in form view
             return {
                 'name': 'Invoice',
                 'type': 'ir.actions.act_window',
                 'res_model': 'account.move',
-                'res_id': customer_invoices[0].id,
+                'res_id': all_invoices[0].id,
                 'view_mode': 'form',
                 'target': 'current',
             }
         else:
             # Multiple invoices - open in tree view
             action = {
-                'name': 'Invoices',
+                'name': 'Family Invoices' if self.is_parent else 'Invoices',
                 'type': 'ir.actions.act_window',
                 'res_model': 'account.move',
                 'view_mode': 'tree,form',
                 'target': 'current',
-                'domain': [('id', 'in', customer_invoices.ids)],
+                'domain': [('id', 'in', all_invoices.ids)],
                 'context': {
                     'default_move_type': 'out_invoice',
                     'default_partner_id': self.id,
