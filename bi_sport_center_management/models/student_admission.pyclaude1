@@ -184,7 +184,7 @@ class StudentAdmission(models.Model):
 
     @api.depends('invoice_ids.payment_state', 'invoice_ids.invoice_date', 'invoice_ids.line_ids.reconciled')
     def _compute_payment_state(self):
-        """Improved computation of payment state and date based on actual payment transactions"""
+        """Improved computation of payment state and date based on the most recent posted invoice"""
         for record in self:
             if not record.invoice_ids:
                 record.payment_state = 'not_paid'
@@ -208,36 +208,61 @@ class StudentAdmission(models.Model):
             # Set payment_state based on the latest invoice
             record.payment_state = latest_invoice.payment_state
 
-            # Find the payment date for the latest invoice if paid, in_payment, or partial
+            # Find the payment date for the latest invoice
             payment_date = False
             
-            if latest_invoice.payment_state in ['paid', 'in_payment', 'partial']:
-                # Use direct SQL to find actual payment dates through reconciliations
-                self.env.cr.execute("""
-                    SELECT MAX(payment_move.date) 
-                    FROM account_move_line invoice_line
-                    JOIN account_partial_reconcile apr ON 
-                        apr.debit_move_id = invoice_line.id OR 
-                        apr.credit_move_id = invoice_line.id
-                    JOIN account_move_line payment_line ON 
-                        (apr.credit_move_id = payment_line.id AND apr.debit_move_id = invoice_line.id) OR
-                        (apr.debit_move_id = payment_line.id AND apr.credit_move_id = invoice_line.id)
-                    JOIN account_move payment_move ON payment_line.move_id = payment_move.id
-                    WHERE 
-                        invoice_line.move_id = %s AND
-                        payment_move.id != %s AND
-                        payment_move.state = 'posted'
-                """, (latest_invoice.id, latest_invoice.id))
-                
-                result = self.env.cr.fetchone()
-                if result and result[0]:
-                    payment_date = result[0]
-                
-                # For partial payments with no payment date, use invoice date as fallback
-                # but ONLY if no actual payment date was found
-                if not payment_date and latest_invoice.payment_state in ['in_payment', 'partial']:
-                    payment_date = latest_invoice.invoice_date
+            # Method 1: Check payment records directly (most reliable)
+            payments = self.env['account.payment'].search([
+                ('reconciled_invoice_ids', 'in', latest_invoice.ids)
+            ], order='date desc')
             
+            if payments:
+                payment_date = payments[0].date
+            else:
+                # Method 2: Check reconciled move lines
+                reconciled_lines = self.env['account.move.line'].search([
+                    ('move_id', '=', latest_invoice.id),
+                    ('account_id.account_type', '=', 'asset_receivable'),
+                    ('reconciled', '=', True)
+                ])
+                
+                payment_dates = []
+                for line in reconciled_lines:
+                    # Get all reconciled payments
+                    matching_lines = line.matched_credit_ids.mapped('credit_move_id') + \
+                                   line.matched_debit_ids.mapped('debit_move_id')
+                    
+                    for match_line in matching_lines:
+                        if match_line.move_id != latest_invoice and match_line.date:
+                            payment_dates.append(match_line.date)
+                
+                if payment_dates:
+                    payment_date = max(payment_dates)
+                else:
+                    # Method 3: Check payment widget
+                    if latest_invoice.invoice_payments_widget:
+                        import json
+                        try:
+                            payments_data = json.loads(latest_invoice.invoice_payments_widget)
+                            if payments_data and 'content' in payments_data:
+                                for payment in payments_data['content']:
+                                    if payment.get('date'):
+                                        try:
+                                            payment_date_str = payment['date']
+                                            payment_date_obj = fields.Date.from_string(payment_date_str)
+                                            payment_dates.append(payment_date_obj)
+                                        except (ValueError, TypeError):
+                                            continue
+                                
+                                if payment_dates:
+                                    payment_date = max(payment_dates)
+                        except (json.JSONDecodeError, ValueError, KeyError):
+                            pass
+            
+            # Use invoice date as fallback for partial payments with no payment date
+            if not payment_date and latest_invoice.payment_state in ['partial', 'in_payment']:
+                payment_date = latest_invoice.invoice_date
+                
             record.payment_date = payment_date
 
     @api.constrains('student_national_id', 'parent_national_id', 'mobile', 'parent_mobile')

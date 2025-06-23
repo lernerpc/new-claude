@@ -21,14 +21,14 @@ class ResPartner(models.Model):
     is_disability = fields.Boolean(string="Has Disability")
     disability_description = fields.Text(string="Disability Description")
     is_sport = fields.Boolean(string="Is Sport", readonly=True)
-
+    
     # Invoice related fields - Keep original One2many but fix the count and payment state logic
     invoice_ids = fields.One2many('account.move', 'partner_id', string='Invoices')
     invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count')
-
+    
     # Children count field
     children_count = fields.Integer(compute='_compute_children_count', string='Children Count')
-
+    
     # Payment status field
     payment_state = fields.Selection([
         ('not_paid', 'Not Paid'),
@@ -38,15 +38,15 @@ class ResPartner(models.Model):
         ('reversed', 'Reversed'),
         ('invoicing_legacy', 'Invoicing App Legacy'),
     ], string='Payment Status', compute='_compute_payment_state', store=True, readonly=True)
-
+    
     payment_date = fields.Date(
-        string='Payment Date',
-        compute='_compute_payment_state',
-        store=True,
+        string='Payment Date', 
+        compute='_compute_payment_state', 
+        store=True, 
         readonly=True,
         help="Date of the latest payment for this partner"
     )
-
+    
     def update_parent_privileges_or_logic(self, new_guardian, new_parking):
         """
         Update parent privileges using OR logic to never downgrade privileges.
@@ -56,48 +56,48 @@ class ResPartner(models.Model):
         if not self.is_parent:
             _logger.warning("Attempted to update parent privileges on non-parent record: %s", self.name)
             return
-
+            
         # Get current values
         current_guardian = self.is_guardian or False
         current_parking = self.is_parking or False
-
+        
         # Apply OR logic (True if current OR new is True)
         final_guardian = current_guardian or new_guardian
         final_parking = current_parking or new_parking
-
+        
         _logger.info("Parent privilege update for %s (ID: %s):", self.name, self.id)
         _logger.info("  Current: Guardian=%s, Parking=%s", current_guardian, current_parking)
         _logger.info("  New child: Guardian=%s, Parking=%s", new_guardian, new_parking)
         _logger.info("  Final (OR logic): Guardian=%s, Parking=%s", final_guardian, final_parking)
-
+        
         # Use SQL update directly to ensure it works
         try:
             self.env.cr.execute("""
-                UPDATE res_partner
+                UPDATE res_partner 
                 SET is_guardian = %s, is_parking = %s
                 WHERE id = %s
             """, (final_guardian, final_parking, self.id))
-
+            
             self.env.cr.commit()
-
+            
             # Verify with SQL query
             self.env.cr.execute("""
-                SELECT is_guardian, is_parking
-                FROM res_partner
+                SELECT is_guardian, is_parking 
+                FROM res_partner 
                 WHERE id = %s
             """, (self.id,))
-
+            
             result = self.env.cr.fetchone()
             if result:
                 actual_guardian, actual_parking = result
                 if actual_guardian == final_guardian and actual_parking == final_parking:
-                    _logger.info("✅ Parent privilege update SUCCESS: Guardian=%s, Parking=%s",
+                    _logger.info("✅ Parent privilege update SUCCESS: Guardian=%s, Parking=%s", 
                                 actual_guardian, actual_parking)
                 else:
                     _logger.error("❌ Parent privilege update FAILED!")
                     _logger.error("  Expected: Guardian=%s, Parking=%s", final_guardian, final_parking)
                     _logger.error("  Actual: Guardian=%s, Parking=%s", actual_guardian, actual_parking)
-
+            
         except Exception as e:
             _logger.error("Error updating parent privileges: %s", str(e))
             # Fallback to ORM write
@@ -109,30 +109,30 @@ class ResPartner(models.Model):
                 _logger.info("Fallback ORM update completed")
             except Exception as orm_error:
                 _logger.error("ORM update also failed: %s", str(orm_error))
-
+        
     def _sql_update_privileges(self, guardian, parking):
         """Direct SQL update method (legacy - kept for compatibility)"""
         _logger.info("Direct SQL update for parent %s", self.name)
-
+        
         self.env.cr.execute("""
-            UPDATE res_partner
+            UPDATE res_partner 
             SET is_guardian = %s, is_parking = %s
             WHERE id = %s
         """, (guardian, parking, self.id))
-
+        
         self.env.cr.commit()
-
+        
         # Verify SQL update
         self.env.cr.execute("""
-            SELECT is_guardian, is_parking
-            FROM res_partner
+            SELECT is_guardian, is_parking 
+            FROM res_partner 
             WHERE id = %s
         """, (self.id,))
-
+        
         result = self.env.cr.fetchone()
         if result:
             _logger.info("SQL update result: Guardian=%s, Parking=%s", result[0], result[1])
-
+        
     def get_all_children_privileges(self):
         """
         Get the combined privileges from all children of this parent.
@@ -141,19 +141,19 @@ class ResPartner(models.Model):
         self.ensure_one()
         if not self.is_parent:
             return (False, False)
-
+        
         # Get all children
         children = self.env['res.partner'].search([('parent_id', '=', self.id)])
-
+        
         # Check if any child has guardian or parking privileges
         any_guardian = any(child.is_guardian for child in children)
         any_parking = any(child.is_parking for child in children)
-
-        _logger.info("Parent %s has %d children. Combined privileges: Guardian=%s, Parking=%s",
+        
+        _logger.info("Parent %s has %d children. Combined privileges: Guardian=%s, Parking=%s", 
                     self.name, len(children), any_guardian, any_parking)
-
+        
         return (any_guardian, any_parking)
-
+    
     def recalculate_parent_privileges(self):
         """
         Recalculate parent privileges based on all children.
@@ -162,19 +162,19 @@ class ResPartner(models.Model):
         self.ensure_one()
         if not self.is_parent:
             return
-
+            
         any_guardian, any_parking = self.get_all_children_privileges()
-
-        _logger.info("Recalculating privileges for parent %s: Guardian=%s, Parking=%s",
+        
+        _logger.info("Recalculating privileges for parent %s: Guardian=%s, Parking=%s", 
                     self.name, any_guardian, any_parking)
-
+        
         self.write({
             'is_guardian': any_guardian,
             'is_parking': any_parking,
         })
-
+        
         self.env.cr.commit()
-
+    
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_invoice_count(self):
         """Compute invoice count - include children's invoices for parents"""
@@ -184,7 +184,7 @@ class ResPartner(models.Model):
                 parent_invoices = record.invoice_ids.filtered(
                     lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                 )
-
+                
                 # Get all children's invoices
                 children_invoices = self.env['account.move']
                 for child in record.child_ids:
@@ -192,146 +192,95 @@ class ResPartner(models.Model):
                         lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                     )
                     children_invoices |= child_customer_invoices
-
+                
                 # Combine parent and children invoices
                 all_invoices = parent_invoices | children_invoices
                 record.invoice_count = len(all_invoices)
-
+                
             else:
                 # For non-parents: only count their own invoices
                 customer_invoices = record.invoice_ids.filtered(
                     lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                 )
                 record.invoice_count = len(customer_invoices)
-
+    
     @api.depends('child_ids')
     def _compute_children_count(self):
         """Compute children count"""
         for record in self:
             record.children_count = len(record.child_ids)
-
-    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type',
-                 'invoice_ids.invoice_date', 'invoice_ids.line_ids.reconciled',
-                 'child_ids.invoice_ids.payment_state', 'child_ids.invoice_ids.state', 
-                 'child_ids.invoice_ids.move_type', 'child_ids.invoice_ids.invoice_date',
-                 'child_ids.invoice_ids.line_ids.reconciled')
+    
+    @api.depends('invoice_ids.payment_state', 'invoice_ids.state', 'invoice_ids.move_type', 
+                 'invoice_ids.invoice_date', 'child_ids.invoice_ids.payment_state', 
+                 'child_ids.invoice_ids.state', 'child_ids.invoice_ids.move_type', 
+                 'child_ids.invoice_ids.invoice_date')
     def _compute_payment_state(self):
-        """Improved computation of payment state and date for partners and parents"""
+        """Compute payment state - include children's invoices for parents"""
         for record in self:
             if record.is_parent:
                 # For parents: consider their own + children's invoices
-                all_invoices = self._get_all_family_invoices(record)
+                parent_invoices = record.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+                )
+                
+                # Add children's posted invoices
+                all_invoices = parent_invoices
+                for child in record.child_ids:
+                    child_invoices = child.invoice_ids.filtered(
+                        lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+                    )
+                    all_invoices |= child_invoices
                 
                 if not all_invoices:
                     record.payment_state = 'not_paid'
                     record.payment_date = False
-                    continue
-                
-                # Get the most recent invoice by invoice_date or create_date
-                latest_invoice = sorted(
-                    all_invoices,
-                    key=lambda inv: inv.invoice_date or inv.create_date,
-                    reverse=True
-                )[0]
-                
-                # Set payment_state based on the latest invoice
-                record.payment_state = latest_invoice.payment_state
-                
-                # Find the payment date for this invoice
-                payment_date = self._get_actual_payment_date(latest_invoice)
-                
-                # Use invoice date as fallback for partial payments with no payment date
-                if not payment_date and latest_invoice.payment_state in ['in_payment', 'partial']:
-                    payment_date = latest_invoice.invoice_date
+                else:
+                    # Get the latest invoice and its payment state
+                    invoices_with_date = all_invoices.filtered(lambda inv: inv.invoice_date)
                     
-                record.payment_date = payment_date
+                    if invoices_with_date:
+                        latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = latest_invoice.invoice_date
+                    else:
+                        latest_invoice = all_invoices[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = False
+                        
             else:
-                # For regular partners: only consider their own invoices
-                posted_invoices = record.invoice_ids.filtered(
-                    lambda inv: inv.state == 'posted' and 
-                                inv.move_type in ['out_invoice', 'out_refund']
+                # For non-parents: only consider their own invoices (original logic)
+                customer_invoices = record.invoice_ids.filtered(
+                    lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
                 )
                 
-                if not posted_invoices:
+                if not customer_invoices:
                     record.payment_state = 'not_paid'
                     record.payment_date = False
-                    continue
-                
-                # Get the most recent invoice by invoice_date or create_date
-                latest_invoice = sorted(
-                    posted_invoices,
-                    key=lambda inv: inv.invoice_date or inv.create_date,
-                    reverse=True
-                )[0]
-                
-                # Set payment_state based on the latest invoice
-                record.payment_state = latest_invoice.payment_state
-                
-                # Find the payment date for this invoice
-                payment_date = self._get_actual_payment_date(latest_invoice)
-                
-                # Use invoice date as fallback for partial payments with no payment date
-                if not payment_date and latest_invoice.payment_state in ['in_payment', 'partial']:
-                    payment_date = latest_invoice.invoice_date
+                else:
+                    # Filter invoices with valid invoice_date and sort by date
+                    invoices_with_date = customer_invoices.filtered(lambda inv: inv.invoice_date)
                     
-                record.payment_date = payment_date
-
-    def _get_all_family_invoices(self, parent):
-        """Helper method to get all invoices for a family (parent + children)"""
-        parent_invoices = parent.invoice_ids.filtered(
-            lambda inv: inv.state == 'posted' and 
-                        inv.move_type in ['out_invoice', 'out_refund']
-        )
-        
-        # Add children's posted invoices
-        all_invoices = parent_invoices
-        for child in parent.child_ids:
-            child_invoices = child.invoice_ids.filtered(
-                lambda inv: inv.state == 'posted' and 
-                            inv.move_type in ['out_invoice', 'out_refund']
-            )
-            all_invoices |= child_invoices
+                    if invoices_with_date:
+                        # Get the latest posted customer invoice
+                        latest_invoice = invoices_with_date.sorted('invoice_date', reverse=True)[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = latest_invoice.invoice_date
+                    else:
+                        # If no invoices have dates, just take the first posted customer invoice
+                        latest_invoice = customer_invoices[0]
+                        record.payment_state = latest_invoice.payment_state
+                        record.payment_date = False
             
-        return all_invoices
-
-    def _get_actual_payment_date(self, invoice):
-        """Helper method to find the actual payment date for an invoice"""
-        payment_date = False
-        
-        if invoice.payment_state in ['paid', 'in_payment', 'partial']:
-            # Use direct SQL to find actual payment dates through reconciliations
-            self.env.cr.execute("""
-                SELECT MAX(payment_move.date) 
-                FROM account_move_line invoice_line
-                JOIN account_partial_reconcile apr ON 
-                    apr.debit_move_id = invoice_line.id OR 
-                    apr.credit_move_id = invoice_line.id
-                JOIN account_move_line payment_line ON 
-                    (apr.credit_move_id = payment_line.id AND apr.debit_move_id = invoice_line.id) OR
-                    (apr.debit_move_id = payment_line.id AND apr.credit_move_id = invoice_line.id)
-                JOIN account_move payment_move ON payment_line.move_id = payment_move.id
-                WHERE 
-                    invoice_line.move_id = %s AND
-                    payment_move.id != %s AND
-                    payment_move.state = 'posted'
-            """, (invoice.id, invoice.id))
-            
-            result = self.env.cr.fetchone()
-            if result and result[0]:
-                payment_date = result[0]
-                
-        return payment_date
-
     def action_view_invoice(self):
         """View invoices - include children's invoices for parents"""
         self.ensure_one()
-
+        
         if self.is_parent:
             # For parents: show their own + children's invoices
             parent_invoices = self.invoice_ids.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
-
+            
             # Add children's invoices
             all_invoices = parent_invoices
             for child in self.child_ids:
@@ -339,13 +288,13 @@ class ResPartner(models.Model):
                     lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                 )
                 all_invoices |= child_invoices
-
+                
         else:
             # For non-parents: only their own invoices
             all_invoices = self.invoice_ids.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
-
+        
         if len(all_invoices) == 1:
             # Single invoice - open in form view
             return {

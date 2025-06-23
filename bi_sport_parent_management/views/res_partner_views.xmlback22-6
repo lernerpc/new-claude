@@ -38,7 +38,6 @@
                 <field name="children_count" string="Children" invisible="not is_parent" optional="1"/>
                 <field name="invoice_count" string="Invoices"/>
                 <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
-                <field name="payment_date" string="Last Payment Date"/>
             </xpath>
         </field>
     </record>
@@ -65,12 +64,6 @@
                                 <i class="fa fa-credit-card fa-lg"/>
                                 <strong>Payment Status:</strong>
                                 <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            </div>
-
-                            <div>
-                                <i class="fa fa-calendar"/>
-                                <strong>Payment Date:</strong>
-                                <field name="payment_date" style="font-size: 16px; font-weight: bold;"/>
                             </div>
 
                             <div>
@@ -112,11 +105,6 @@
                             <field name="first_print_date"/>
                             <field name="last_print_date"/>
                         </group>
-                        <group string="Payment Information">
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="payment_date"/>
-                            <field name="invoice_count"/>
-                        </group>
                     </group>
                 </page>
                 <page name="children" string="Children" invisible="not is_parent">
@@ -133,8 +121,6 @@
                                 <field name="sport_id" widget="many2many_tags"/>
                                 <field name="is_student"/>
                                 <field name="trainer_id"/>
-                                <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                                <field name="payment_date"/>
                             </tree>
                         </field>
                     </group>
@@ -154,26 +140,15 @@
                             <field name="disability_description" invisible="is_disability == False"/>
                             <field name="is_sport" readonly="true"/>
                         </group>
-                        <group name="payment" string="Payment Information" invisible="is_student == False">
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="payment_date"/>
-                        </group>
                     </group>
                 </page>
                 <page name="invoices" string="Invoices" groups="account.group_account_invoice">
-                    <group>
-                        <group>
-                            <field name="invoice_count" string="Invoices"/>
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="payment_date"/>
-                        </group>
-                    </group>
+                    <field name="invoice_count" string="Invoices"/>
                     <field name="invoice_ids" widget="one2many">
                         <tree>
                             <field name="name"/>
                             <field name="invoice_date"/>
                             <field name="amount_total"/>
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
                             <field name="state"/>
                         </tree>
                     </field>
@@ -192,7 +167,7 @@
             border-bottom: 2px solid #dee2e6;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
+        
         .o_field_widget.badge.text-success {
             background-color: #28a745 !important;
             color: white !important;
@@ -200,7 +175,7 @@
             border-radius: 12px;
             font-size: 14px;
         }
-
+        
         .o_field_widget.badge.text-warning {
             background-color: #ffc107 !important;
             color: #212529 !important;
@@ -208,7 +183,7 @@
             border-radius: 12px;
             font-size: 14px;
         }
-
+        
         .o_field_widget.badge.text-info {
             background-color: #17a2b8 !important;
             color: white !important;
@@ -216,7 +191,7 @@
             border-radius: 12px;
             font-size: 14px;
         }
-
+        
         .o_field_widget.badge.text-danger {
             background-color: #dc3545 !important;
             color: white !important;
@@ -224,7 +199,7 @@
             border-radius: 12px;
             font-size: 14px;
         }
-
+        
         .o_field_widget.badge.text-muted {
             background-color: #6c757d !important;
             color: white !important;

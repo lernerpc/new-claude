@@ -26,7 +26,7 @@ class StudentAdmission(models.Model):
     gender = fields.Selection([('male', 'ذكر'), ('female', 'أنثى')], string='الجنس', related='student_id.gender', store=True, readonly=False)
     is_disability = fields.Boolean('هل يوجد أي مرض', related='student_id.is_disability', store=True, readonly=False)
     disability_description = fields.Text('وصف المرض', related='student_id.disability_description', store=True, readonly=False)
-
+    
     # Add member_type field with proper labels
     member_type = fields.Selection([
         ('regular', 'عضو رياضي'),
@@ -36,8 +36,8 @@ class StudentAdmission(models.Model):
     academic_subtype = fields.Selection([
         ('7star', '7 ستار'),
         ('academic', 'أكاديمية')
-    ], string='نوع العضوية الأكاديمية', help="نوع العضوية الأكاديمية المختارة")
-    activity_ids = fields.Many2many('product.product', string="الأنشطة الرياضية", domain=[('is_sportname', '=', True)])
+    ], string='نوع العضوية الأكاديمية', help="نوع العضوية الأكاديمية المختارة") 
+    activity_ids = fields.Many2many('product.product', string="الأنشطة الرياضية", domain=[('is_sportname', '=', True)]) 
     trainer_id = fields.Many2one(comodel_name='res.partner', domain=[('is_coach', '=', True)], string='المدرب')
     state = fields.Selection([
         ('new', 'New'),
@@ -53,7 +53,7 @@ class StudentAdmission(models.Model):
     is_parking = fields.Boolean('هل يحتاج إلى موقف سيارة؟', default=False)
     student_photo = fields.Binary('صورة الطالب', attachment=True)
     parent_photo = fields.Binary('صورة ولي الأمر', attachment=True)
-
+    
     # Add pricelist field for price calculations
     pricelist_id = fields.Many2one('product.pricelist', string='جهة الانتماء')
     # Add parent reference
@@ -70,9 +70,9 @@ class StudentAdmission(models.Model):
     ], string='Payment Status', compute='_compute_payment_state', store=True, readonly=True)
 
     payment_date = fields.Date(
-        string='Payment Date',
-        compute='_compute_payment_state',
-        store=True,
+        string='Payment Date', 
+        compute='_compute_payment_state', 
+        store=True, 
         readonly=True,
         help="Date of the latest payment for this student"
     )
@@ -97,13 +97,13 @@ class StudentAdmission(models.Model):
     def write(self, vals):
         """Override write to maintain photo synchronization"""
         result = super(StudentAdmission, self).write(vals)
-
+        
         # Sync student photo to res.partner
         if 'student_photo' in vals:
             for record in self:
                 if record.student_id and record.student_photo:
                     record.student_id.write({'image_1920': record.student_photo})
-
+        
         # Handle parent privilege updates
         if 'is_guardian' in vals or 'is_parking' in vals:
             for record in self:
@@ -112,7 +112,7 @@ class StudentAdmission(models.Model):
                     _logger.info("Current admission: Guardian=%s, Parking=%s", record.is_guardian, record.is_parking)
                     record.parent_id.update_parent_privileges_or_logic(record.is_guardian, record.is_parking)
                     _logger.info("✅ WRITE: Parent privileges updated using OR logic")
-
+            
         return result
 
     def _ensure_parent_privileges_or_logic(self):
@@ -123,25 +123,25 @@ class StudentAdmission(models.Model):
         for record in self:
             if not record.parent_id:
                 continue
-
+                
             parent = record.parent_id
-
+            
             # Get all children (students) of this parent
             all_children = self.env['res.partner'].search([
                 ('parent_id', '=', parent.id),
                 ('is_student', '=', True)
             ])
-
+            
             # Calculate what parent should have based on ALL children
             should_have_guardian = any(child.is_guardian for child in all_children)
             should_have_parking = any(child.is_parking for child in all_children)
-
+            
             _logger.info("=== PARENT PRIVILEGE CHECK ===")
             _logger.info("Parent: %s (ID: %s)", parent.name, parent.id)
             _logger.info("Found %d children", len(all_children))
             _logger.info("Current parent: Guardian=%s, Parking=%s", parent.is_guardian, parent.is_parking)
             _logger.info("Should be: Guardian=%s, Parking=%s", should_have_guardian, should_have_parking)
-
+            
             # Update parent if needed
             if parent.is_guardian != should_have_guardian or parent.is_parking != should_have_parking:
                 _logger.info("Updating parent privileges...")
@@ -175,70 +175,97 @@ class StudentAdmission(models.Model):
             invoices = self.env['account.move']
             if record.name:
                 invoices = self.env['account.move'].search([
-                    ('invoice_origin', '=', record.name),
-                    ('move_type', 'in', ['out_invoice', 'out_refund'])
+                ('invoice_origin', '=', record.name),
+                ('move_type', 'in', ['out_invoice', 'out_refund'])
                 ])
-
+        
             record.invoice_ids = invoices
             record.invoice_count = len(invoices)
 
-    @api.depends('invoice_ids.payment_state', 'invoice_ids.invoice_date', 'invoice_ids.line_ids.reconciled')
+
+    @api.depends('invoice_ids.payment_state', 'invoice_ids.invoice_payments_widget', 'invoice_ids.line_ids.reconciled')
     def _compute_payment_state(self):
-        """Improved computation of payment state and date based on actual payment transactions"""
+        """Compute payment state and actual payment date based on related invoices"""
         for record in self:
             if not record.invoice_ids:
                 record.payment_state = 'not_paid'
                 record.payment_date = False
-                continue
-
-            # Get all posted invoices, sorted by invoice_date (descending) to get the latest
-            posted_invoices = record.invoice_ids.filtered(lambda inv: inv.state == 'posted')
-            if not posted_invoices:
-                record.payment_state = 'not_paid'
-                record.payment_date = False
-                continue
-
-            # Get the most recent invoice based on invoice_date or create_date
-            latest_invoice = sorted(
-                posted_invoices, 
-                key=lambda inv: inv.invoice_date or inv.create_date,
-                reverse=True
-            )[0]
-
-            # Set payment_state based on the latest invoice
-            record.payment_state = latest_invoice.payment_state
-
-            # Find the payment date for the latest invoice if paid, in_payment, or partial
-            payment_date = False
-            
-            if latest_invoice.payment_state in ['paid', 'in_payment', 'partial']:
-                # Use direct SQL to find actual payment dates through reconciliations
-                self.env.cr.execute("""
-                    SELECT MAX(payment_move.date) 
-                    FROM account_move_line invoice_line
-                    JOIN account_partial_reconcile apr ON 
-                        apr.debit_move_id = invoice_line.id OR 
-                        apr.credit_move_id = invoice_line.id
-                    JOIN account_move_line payment_line ON 
-                        (apr.credit_move_id = payment_line.id AND apr.debit_move_id = invoice_line.id) OR
-                        (apr.debit_move_id = payment_line.id AND apr.credit_move_id = invoice_line.id)
-                    JOIN account_move payment_move ON payment_line.move_id = payment_move.id
-                    WHERE 
-                        invoice_line.move_id = %s AND
-                        payment_move.id != %s AND
-                        payment_move.state = 'posted'
-                """, (latest_invoice.id, latest_invoice.id))
+            else:
+                # Get all posted invoices
+                posted_invoices = record.invoice_ids.filtered(lambda inv: inv.state == 'posted')
+                if not posted_invoices:
+                    record.payment_state = 'not_paid'
+                    record.payment_date = False
+                    continue
                 
-                result = self.env.cr.fetchone()
-                if result and result[0]:
-                    payment_date = result[0]
+                # Determine overall payment state
+                payment_states = posted_invoices.mapped('payment_state')
+                if all(state == 'paid' for state in payment_states):
+                    record.payment_state = 'paid'
+                elif any(state in ['paid', 'in_payment'] for state in payment_states):
+                    record.payment_state = 'partial'
+                else:
+                    record.payment_state = 'not_paid'
                 
-                # For partial payments with no payment date, use invoice date as fallback
-                # but ONLY if no actual payment date was found
-                if not payment_date and latest_invoice.payment_state in ['in_payment', 'partial']:
-                    payment_date = latest_invoice.invoice_date
-            
-            record.payment_date = payment_date
+                # Find the latest actual payment date
+                payment_dates = []
+                paid_invoices = posted_invoices.filtered(lambda inv: inv.payment_state in ['paid', 'in_payment'])
+                
+                # Method 1: Check reconciled move lines (most reliable)
+                for invoice in paid_invoices:
+                    # Get all reconciled lines for this invoice
+                    receivable_lines = invoice.line_ids.filtered(
+                        lambda line: line.account_id.account_type == 'asset_receivable'
+                    )
+                    
+                    for line in receivable_lines:
+                        if line.reconciled:
+                            # Get the reconciled counterpart lines (payments)
+                            reconciled_lines = line.matched_credit_ids.mapped('credit_move_id') + \
+                                             line.matched_debit_ids.mapped('debit_move_id')
+                            
+                            for rec_line in reconciled_lines:
+                                if rec_line.move_id != invoice:  # This is the payment
+                                    payment_dates.append(rec_line.date)
+                
+                # Method 2: Check account.payment records directly
+                if not payment_dates:
+                    for invoice in paid_invoices:
+                        # Find payment records that reconciled with this invoice
+                        payments = self.env['account.payment'].search([
+                            ('reconciled_invoice_ids', 'in', invoice.ids)
+                        ])
+                        for payment in payments:
+                            if payment.date:
+                                payment_dates.append(payment.date)
+                
+                # Method 3: Check payment widget if still no dates found
+                if not payment_dates:
+                    for invoice in paid_invoices:
+                        if invoice.invoice_payments_widget:
+                            import json
+                            try:
+                                payments_data = json.loads(invoice.invoice_payments_widget)
+                                if payments_data and 'content' in payments_data:
+                                    for payment in payments_data['content']:
+                                        if payment.get('date'):
+                                            try:
+                                                payment_date = fields.Date.from_string(payment['date'])
+                                                payment_dates.append(payment_date)
+                                            except (ValueError, TypeError):
+                                                continue
+                            except (json.JSONDecodeError, ValueError, KeyError):
+                                continue
+                
+                # Set the latest payment date
+                if payment_dates:
+                    record.payment_date = max(payment_dates)
+                else:
+                    # Fallback: if invoice is paid but no payment date found, use today
+                    if record.payment_state in ['paid', 'partial']:
+                        record.payment_date = fields.Date.today()
+                    else:
+                        record.payment_date = False
 
     @api.constrains('student_national_id', 'parent_national_id', 'mobile', 'parent_mobile')
     def _check_national_id_and_mobile(self):
@@ -270,7 +297,7 @@ class StudentAdmission(models.Model):
                     raise ValidationError(_('العضوية الرياضية تتطلب اختيار نشاط واحد على الأقل.'))
                 if not record.pricelist_id:
                     raise ValidationError(_('العضوية الرياضية تتطلب اختيار جهة الانتماء.'))
-
+                    
                 # Check if academic product is included (shouldn't be for regular members)
                 academic_product = self.env['product.product'].search([
                     ('name', '=', 'أكاديمية'),
@@ -278,36 +305,36 @@ class StudentAdmission(models.Model):
                 ], limit=1)
                 if academic_product and academic_product in record.activity_ids:
                     raise ValidationError(_('لا يمكن للعضوية الرياضية أن تشمل المنتج الأكاديمي.'))
-
+                    
             elif record.member_type == 'academic':
                 # Academic members should have the academic product
                 academic_product = self.env['product.product'].search([
                     ('name', '=', 'أكاديمية'),
                     ('is_sportname', '=', True)
                 ], limit=1)
-
+                
                 if academic_product and academic_product not in record.activity_ids:
                     # Auto-assign academic product if missing
                     record.activity_ids = [(4, academic_product.id)]
-
+                
                 # Academic members should not have sports activities (only academic product)
                 if record.activity_ids:
                     non_academic_activities = record.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
                     if non_academic_activities:
                         raise ValidationError(_('العضوية الأكاديمية لا يمكن أن تشمل أنشطة رياضية.'))
 
-    @api.model_create_multi
+    @api.model_create_multi  
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', _('New')) == _('New'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('student.admission') or _('New')
         res = super(StudentAdmission, self).create(vals_list)
-
+        
         # Sync student photo to res.partner after creation
         for record in res:
             if record.student_photo and record.student_id:
                 record.student_id.write({'image_1920': record.student_photo})
-
+        
         # Only create portal access if email is provided
         if res.email and res.email.strip():
             portal_wizard_obj = self.env['portal.wizard']
@@ -379,7 +406,7 @@ class StudentAdmission(models.Model):
             'is_guardian': self.is_guardian,
             'is_parking': self.is_parking,
         }
-
+        
         # Only add sports for regular members or if activities exist
             if self.member_type == 'regular' and self.activity_ids:
             # Filter out academic products for regular members
@@ -401,17 +428,17 @@ class StudentAdmission(models.Model):
             if self.parent_id:
                 _logger.info("=== MAKE STUDENT: UPDATING PARENT PRIVILEGES ===")
                 _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
-
+            
             # Use the OR logic method to properly update parent privileges
                 self.parent_id.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
-
+            
                 _logger.info("✅ MAKE STUDENT: Parent privileges updated using OR logic")
-
+                
     def action_cancel(self):
         for record in self:
             if record.state == 'new':
                 record.state = 'cancel'
-
+                
                 # CRITICAL: After cancelling, recalculate parent privileges
                 record._ensure_parent_privileges_or_logic()
             else:
@@ -424,12 +451,12 @@ class StudentAdmission(models.Model):
                 # Reset all related records to draft
                 if record.invoice_ids:
                     record.invoice_ids.write({'state': 'draft'})
-
+                
                 # Reset the registration to new
                 record.write({
                     'state': 'new'
                 })
-
+                
                 # CRITICAL: After resetting, recalculate parent privileges
                 record._ensure_parent_privileges_or_logic()
             else:
@@ -486,25 +513,25 @@ class StudentAdmission(models.Model):
     def get_total_price(self):
         """Calculate total price based on member type"""
         total = 0
-
+        
         # Base fees
         if self.member_type == 'academic':
             total += 50  # Academic card fee
         else:
             total += 50  # ID card fee
             total += 50  # Form fee
-
+        
         # Guardian fee
         if self.is_guardian:
             total += 50
-
+            
         # Activity fees (only for regular members)
         if self.member_type == 'regular' and self.activity_ids and self.pricelist_id:
             for activity in self.activity_ids:
                 if activity.name != 'أكاديمية':  # Exclude academic product
                     price = self.pricelist_id._get_product_price(activity, 1)
                     total += price
-
+                    
         return total
 
     def get_member_type_display(self):

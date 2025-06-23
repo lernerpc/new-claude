@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit the payment tree view to add ref field -->
+    <record id="view_account_payment_tree_inherit_ref" model="ir.ui.view">
+        <field name="name">account.payment.tree.ref.inherit</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="ref" string="رقم الايصال" optional="show"/>
+            </field>
+        </field>
+    </record>
+    
+    <!-- Make the ref field searchable -->
+    <record id="view_account_payment_search_inherit_ref" model="ir.ui.view">
+        <field name="name">account.payment.search.ref.inherit</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_search"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="ref" string="رقم الايصال"/>
+            </field>
+        </field>
+    </record>
+</odoo>
