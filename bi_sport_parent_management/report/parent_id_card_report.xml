@@ -247,7 +247,8 @@
                                 <div class="info-item">
                                     <span class="info-label">اسم ولي الأمر:</span>
                                     <span class="info-value">
-                                        <t t-esc="student.name"/>
+                                        <t t-set="parent_name_only" t-value="student.name.split(' (')[0] if student.name and ' (' in student.name else student.name"/>
+                                        <t t-esc="parent_name_only"/>
                                     </span>
                                 </div>
 

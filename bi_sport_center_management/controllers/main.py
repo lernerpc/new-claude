@@ -159,7 +159,7 @@ class StudentRegistration(http.Controller):
                     'name': name,
                     'mobile': mobile,
                     'student_national_id': student_national_id,
-                    'p_name': self.remove2(kw.get('parent_fullname')),
+                    # Remove p_name assignment - it will be computed automatically from parent relationship
                     'parent_national_id': parent_national_id,
                     'phone': parent_mobile,
                     'birth_date': kw.get('birth_date'),
@@ -169,12 +169,32 @@ class StudentRegistration(http.Controller):
                     'is_student': True,
                     'is_guardian': current_is_guardian,
                     'is_parking': current_is_parking,
-                    'parent_id': parent_partner.id,  # Set the parent relationship
+                    'parent_id': parent_partner.id,  # Set the parent relationship - p_name will compute from this
                 }
                 if student_photo_data:
                     partner_vals['image_1920'] = student_photo_data
 
                 student_partner = request.env['res.partner'].sudo().create(partner_vals)
+
+                # =================================================================
+                # UPDATE PARENT PRIVILEGES AND REFRESH DISPLAY NAME
+                # =================================================================
+                if student_partner and parent_partner:
+                    # Update parent privileges using OR logic
+                    parent_partner.update_parent_privileges_or_logic(current_is_guardian, current_is_parking)
+                    
+                    # Force refresh of display name and p_name by invalidating cache
+                    try:
+                        parent_partner.invalidate_recordset(['display_name_with_children', 'display_name'])
+                        # Also invalidate p_name for all children including the new one
+                        all_children = parent_partner.child_ids
+                        if all_children:
+                            all_children.invalidate_recordset(['p_name'])
+                        _logger.info("✅ PARENT display name and children p_name cache invalidated successfully")
+                    except Exception as e:
+                        _logger.error("Error invalidating parent display name cache: %s", str(e))
+                    
+                    _logger.info("✅ PARENT UPDATED with OR logic and display names refreshed")
 
                 if student_partner:
                     # Handle activities and pricelist based on member type
@@ -252,7 +272,7 @@ class StudentRegistration(http.Controller):
                     admission = request.env['student.admission'].sudo().create(admission_vals)
 
                     # =================================================================
-                    # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT
+                    # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES AND DISPLAY NAME ARE CORRECT
                     # =================================================================
                     if admission and admission.parent_id:
                         _logger.info("FINAL SAFETY NET: Ensuring parent privileges are correct")
@@ -263,7 +283,18 @@ class StudentRegistration(http.Controller):
                             admission.is_parking
                         )
                         
-                        _logger.info("FINAL SAFETY NET: Parent privileges confirmed")
+                        # Final refresh of parent display name and children p_name after admission creation
+                        try:
+                            admission.parent_id.invalidate_recordset(['display_name_with_children', 'display_name'])
+                            # Also invalidate p_name for all children
+                            all_children = admission.parent_id.child_ids
+                            if all_children:
+                                all_children.invalidate_recordset(['p_name'])
+                            _logger.info("✅ FINAL: Parent display name and children p_name cache invalidated successfully")
+                        except Exception as e:
+                            _logger.error("Error in final display name cache invalidation: %s", str(e))
+                        
+                        _logger.info("FINAL SAFETY NET: Parent privileges and display names confirmed")
                     
                     if member_type == 'academic':
                         message = 'تم التسجيل بنجاح كعضو أكاديمي'

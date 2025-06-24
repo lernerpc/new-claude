@@ -325,171 +325,168 @@ class StudentAdmission(models.Model):
         return res
 
     def action_enroll(self):
-        """Enhanced enroll method to create/update student and parent like registration form"""
-        self.state = 'enrolled'
-        
-        # =================================================================
-        # PARENT CREATION/UPDATE LOGIC - Same as registration form
-        # =================================================================
-        
-        parent_partner = None
-        
-        # Try to find existing parent by national ID first
-        if self.parent_national_id:
-            parent_partner = self.env['res.partner'].search([
-                ('parent_national_id', '=', self.parent_national_id),
-                ('is_parent', '=', True)
-            ], limit=1)
-        
-        # If not found by national ID, try by mobile
-        if not parent_partner and self.parent_mobile:
-            parent_partner = self.env['res.partner'].search([
-                ('mobile', '=', self.parent_mobile),
-                ('is_parent', '=', True)
-            ], limit=1)
+      """Enhanced enroll method to create/update student and parent like registration form"""
+      self.state = 'enrolled'
+      
+      # =================================================================
+      # PARENT CREATION/UPDATE LOGIC - Same as registration form
+      # =================================================================
+      
+      parent_partner = None
+      
+      # Try to find existing parent by national ID first
+      if self.parent_national_id:
+          parent_partner = self.env['res.partner'].search([
+              ('parent_national_id', '=', self.parent_national_id),
+              ('is_parent', '=', True)
+          ], limit=1)
+      
+      # If not found by national ID, try by mobile
+      if not parent_partner and self.parent_mobile:
+          parent_partner = self.env['res.partner'].search([
+              ('mobile', '=', self.parent_mobile),
+              ('is_parent', '=', True)
+          ], limit=1)
 
-        _logger.info("=== ENROLL PARENT UPDATE START ===")
-        _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
+      _logger.info("=== ENROLL PARENT UPDATE START ===")
+      _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
 
-        # Prepare parent values
-        parent_vals = {
-            'name': self.p_name,
-            'mobile': self.parent_mobile,
-            'parent_national_id': self.parent_national_id,
-            'is_parent': True,
-            'academic_subtype': self.academic_subtype if hasattr(self, 'academic_subtype') else '',
-        }
+      # Prepare parent values - use simple parent name, p_name will be computed
+      parent_vals = {
+          'name': self.p_name.split(' (')[0] if self.p_name and ' (' in self.p_name else self.p_name,  # Extract just parent name
+          'mobile': self.parent_mobile,
+          'parent_national_id': self.parent_national_id,
+          'is_parent': True,
+          'academic_subtype': self.academic_subtype if hasattr(self, 'academic_subtype') else '',
+      }
 
-        if parent_partner:
-            # EXISTING PARENT - Update basic info first, then calculate privileges from ALL children
-            _logger.info("Found existing parent: %s (ID: %s)", parent_partner.name, parent_partner.id)
-            
-            # Update basic parent information first
-            parent_partner.write(parent_vals)
-            
-            # Get ALL student admissions for this parent (including current one)
-            all_admissions = self.env['student.admission'].search([
-                ('parent_national_id', '=', self.parent_national_id),
-                ('state', 'in', ['enrolled', 'student'])
-            ])
-            
-            # Calculate what parent should have based on ALL children using OR logic
-            should_have_guardian = any(admission.is_guardian for admission in all_admissions)
-            should_have_parking = any(admission.is_parking for admission in all_admissions)
-            
-            _logger.info("Found %d admissions for parent", len(all_admissions))
-            _logger.info("Current parent privileges: Guardian=%s, Parking=%s", parent_partner.is_guardian, parent_partner.is_parking)
-            _logger.info("Should have privileges: Guardian=%s, Parking=%s", should_have_guardian, should_have_parking)
-            
-            # Update parent privileges based on ALL children
-            parent_partner.write({
-                'is_guardian': should_have_guardian,
-                'is_parking': should_have_parking,
-            })
-            
-            _logger.info("✅ EXISTING PARENT UPDATED with OR logic from ALL children")
-            
-        else:
-            # NEW PARENT - Use current child's values since it's the first child
-            parent_vals.update({
-                'is_guardian': self.is_guardian,
-                'is_parking': self.is_parking,
-            })
-            
-            parent_partner = self.env['res.partner'].create(parent_vals)
-            
-            _logger.info("✅ NEW PARENT CREATED: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
+      if parent_partner:
+          # EXISTING PARENT - Use the update_parent_privileges_or_logic method
+          _logger.info("Found existing parent: %s (ID: %s)", parent_partner.name, parent_partner.id)
+          
+          # Update basic parent information first
+          parent_partner.write(parent_vals)
+          
+          # Then update privileges using OR logic
+          parent_partner.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+          
+          _logger.info("✅ EXISTING PARENT UPDATED with OR logic")
+          
+      else:
+          # NEW PARENT - Use current child's values
+          parent_vals['is_guardian'] = self.is_guardian
+          parent_vals['is_parking'] = self.is_parking
+          
+          parent_partner = self.env['res.partner'].create(parent_vals)
+          
+          _logger.info("✅ NEW PARENT CREATED: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
 
-        _logger.info("=== ENROLL PARENT UPDATE END ===")
+      _logger.info("=== ENROLL PARENT UPDATE END ===")
 
-        # =================================================================
-        # STUDENT UPDATE LOGIC - Enhanced version
-        # =================================================================
-        
-        # Update student record with complete information
-        student_vals = {
-            'is_student': True,  # Make sure student flag is True, not False
-            'mobile': self.mobile,
-            'student_national_id': self.student_national_id,
-            'p_name': self.p_name,
-            'parent_national_id': self.parent_national_id,
-            'phone': self.parent_mobile,
-            'birth_date': self.birth_date,
-            'gender': self.gender,
-            'is_disability': self.is_disability,
-            'disability_description': self.disability_description,
-            'is_guardian': self.is_guardian,
-            'is_parking': self.is_parking,
-            'parent_id': parent_partner.id,  # Set the parent relationship
-        }
+      # =================================================================
+      # STUDENT UPDATE LOGIC - Enhanced version
+      # =================================================================
+      
+      # Update student record with complete information
+      student_vals = {
+          'is_student': True,  # Make sure student flag is True
+          'mobile': self.mobile,
+          'student_national_id': self.student_national_id,
+          # Remove p_name assignment - it will be computed automatically from parent relationship
+          'parent_national_id': self.parent_national_id,
+          'phone': self.parent_mobile,
+          'birth_date': self.birth_date,
+          'gender': self.gender,
+          'is_disability': self.is_disability,
+          'disability_description': self.disability_description,
+          'is_guardian': self.is_guardian,
+          'is_parking': self.is_parking,
+          'parent_id': parent_partner.id,  # Set the parent relationship - p_name will compute from this
+      }
 
-        # Handle sports assignment based on member type
-        if self.member_type == 'regular' and self.activity_ids:
-            # Filter out academic products for regular members
-            sports_activities = self.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
-            if sports_activities:
-                student_vals['sport_id'] = [(6, 0, sports_activities.ids)]
-        elif self.member_type == 'academic':
-            # Academic members don't get sport assignments
-            student_vals['sport_id'] = [(6, 0, [])]
+      # Handle sports assignment based on member type
+      if self.member_type == 'regular' and self.activity_ids:
+          # Filter out academic products for regular members
+          sports_activities = self.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
+          if sports_activities:
+              student_vals['sport_id'] = [(6, 0, sports_activities.ids)]
+      elif self.member_type == 'academic':
+          # Academic members don't get sport assignments
+          student_vals['sport_id'] = [(6, 0, [])]
 
-        # Sync student photo if present
-        if hasattr(self, 'student_photo') and self.student_photo:
-            student_vals['image_1920'] = self.student_photo
+      # Sync student photo if present
+      if hasattr(self, 'student_photo') and self.student_photo:
+          student_vals['image_1920'] = self.student_photo
 
-        # Update the student record
-        self.student_id.write(student_vals)
+      # Update the student record
+      self.student_id.write(student_vals)
 
-        # Update the admission record with parent reference
-        self.write({'parent_id': parent_partner.id})
+      # Update the admission record with parent reference
+      self.write({'parent_id': parent_partner.id})
 
-        # Update parent photo if provided
-        if self.parent_photo:
-            parent_partner.write({
-                'parent_image_1920': self.parent_photo,
-                'image_1920': self.parent_photo,
-            })
+      # Update parent photo if provided
+      if self.parent_photo:
+          parent_partner.write({
+              'parent_image_1920': self.parent_photo,
+              'image_1920': self.parent_photo,
+          })
 
-        # =================================================================
-        # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT FROM ALL CHILDREN
-        # =================================================================
-        _logger.info("ENROLL FINAL SAFETY NET: Ensuring parent privileges are correct from ALL children")
-        
-        # Get ALL student admissions for this parent to recalculate privileges
-        all_admissions = self.env['student.admission'].search([
-            ('parent_national_id', '=', self.parent_national_id),
-            ('state', 'in', ['enrolled', 'student'])
-        ])
-        
-        # Calculate what parent should have based on ALL children using OR logic
-        final_should_have_guardian = any(admission.is_guardian for admission in all_admissions)
-        final_should_have_parking = any(admission.is_parking for admission in all_admissions)
-        
-        _logger.info("FINAL CHECK: Found %d total admissions for parent", len(all_admissions))
-        _logger.info("FINAL CHECK: Should have privileges: Guardian=%s, Parking=%s", final_should_have_guardian, final_should_have_parking)
-        
-        # Update parent with final calculated privileges
-        parent_partner.write({
-            'is_guardian': final_should_have_guardian,
-            'is_parking': final_should_have_parking,
-        })
-        
-        _logger.info("ENROLL FINAL SAFETY NET: Parent privileges confirmed from ALL children")
+      # =================================================================
+      # UPDATE PARENT PRIVILEGES AND REFRESH DISPLAY NAMES
+      # =================================================================
+      if parent_partner:
+          # Update parent privileges using OR logic
+          parent_partner.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+          
+          # Force refresh of display name and p_name by invalidating cache
+          try:
+              parent_partner.invalidate_recordset(['display_name_with_children', 'display_name'])
+              # Also invalidate p_name for all children including the new one
+              all_children = parent_partner.child_ids
+              if all_children:
+                  all_children.invalidate_recordset(['p_name'])
+              _logger.info("✅ ENROLL: Parent display name and children p_name cache invalidated successfully")
+          except Exception as e:
+              _logger.error("Error invalidating parent display name cache: %s", str(e))
+          
+          _logger.info("✅ ENROLL: Parent updated with OR logic and display names refreshed")
 
-        # Send enrollment email only if email address is provided
-        if self.email and self.email.strip():
-            template = self.env.ref('bi_sport_center_management.student_admission_enroll_email_template')
-            if template:
-                template.send_mail(self.id, force_send=True)
+      # =================================================================
+      # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES AND DISPLAY NAMES ARE CORRECT
+      # =================================================================
+      if parent_partner:
+          _logger.info("ENROLL FINAL SAFETY NET: Ensuring parent privileges are correct")
+          
+          # Use the proven OR logic update method one more time
+          parent_partner.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+          
+          # Final refresh of parent display name and children p_name after enrollment
+          try:
+              parent_partner.invalidate_recordset(['display_name_with_children', 'display_name'])
+              # Also invalidate p_name for all children
+              all_children = parent_partner.child_ids
+              if all_children:
+                  all_children.invalidate_recordset(['p_name'])
+              _logger.info("✅ ENROLL FINAL: Parent display name and children p_name cache invalidated successfully")
+          except Exception as e:
+              _logger.error("Error in final display name cache invalidation: %s", str(e))
+          
+          _logger.info("ENROLL FINAL SAFETY NET: Parent privileges and display names confirmed")
 
-        return {
-            'name': 'Create Invoice',
-            'view_mode': 'form',
-            'res_model': 'create.invoice',
-            'type': 'ir.actions.act_window',
-            'context': self._context,
-            'target': 'new',
-        }
+      # Send enrollment email only if email address is provided
+      if self.email and self.email.strip():
+          template = self.env.ref('bi_sport_center_management.student_admission_enroll_email_template')
+          if template:
+              template.send_mail(self.id, force_send=True)
+
+      return {
+          'name': 'Create Invoice',
+          'view_mode': 'form',
+          'res_model': 'create.invoice',
+          'type': 'ir.actions.act_window',
+          'context': self._context,
+          'target': 'new',
+      }
     def action_make_student(self):
         """Override to handle different member types - FIXED VERSION"""
         if not self.is_invoiced:
@@ -546,304 +543,300 @@ class StudentAdmission(models.Model):
 
                 _logger.info("✅ MAKE STUDENT: Parent privileges updated using OR logic")
 
+
     def action_sync_changes(self):
-        """Sync all admission changes to parent, student records, and invoices"""
-        
-        # =================================================================
-        # PARENT CREATION/UPDATE LOGIC - Same as enroll
-        # =================================================================
-        
-        parent_partner = None
-        
-        # Try to find existing parent by national ID first
-        if self.parent_national_id:
-            parent_partner = self.env['res.partner'].search([
-                ('parent_national_id', '=', self.parent_national_id),
-                ('is_parent', '=', True)
-            ], limit=1)
-        
-        # If not found by national ID, try by mobile
-        if not parent_partner and self.parent_mobile:
-            parent_partner = self.env['res.partner'].search([
-                ('mobile', '=', self.parent_mobile),
-                ('is_parent', '=', True)
-            ], limit=1)
+      """Sync all admission changes to parent, student records, and invoices"""
+      
+      # =================================================================
+      # PARENT CREATION/UPDATE LOGIC - Same as enroll
+      # =================================================================
+      
+      parent_partner = None
+      
+      # Try to find existing parent by national ID first
+      if self.parent_national_id:
+          parent_partner = self.env['res.partner'].search([
+              ('parent_national_id', '=', self.parent_national_id),
+              ('is_parent', '=', True)
+          ], limit=1)
+      
+      # If not found by national ID, try by mobile
+      if not parent_partner and self.parent_mobile:
+          parent_partner = self.env['res.partner'].search([
+              ('mobile', '=', self.parent_mobile),
+              ('is_parent', '=', True)
+          ], limit=1)
 
-        _logger.info("=== SYNC CHANGES PARENT UPDATE START ===")
-        _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
+      _logger.info("=== SYNC CHANGES PARENT UPDATE START ===")
+      _logger.info("Current admission: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
 
-        # Prepare parent values
-        parent_vals = {
-            'name': self.p_name,
-            'mobile': self.parent_mobile,
-            'parent_national_id': self.parent_national_id,
-            'is_parent': True,
-            'academic_subtype': self.academic_subtype if hasattr(self, 'academic_subtype') else '',
-            'email': self.email,  # Sync email to parent
-        }
+      # Prepare parent values - use simple parent name, p_name will be computed
+      parent_vals = {
+          'name': self.p_name.split(' (')[0] if self.p_name and ' (' in self.p_name else self.p_name,
+          'mobile': self.parent_mobile,
+          'parent_national_id': self.parent_national_id,
+          'is_parent': True,
+          'academic_subtype': self.academic_subtype if hasattr(self, 'academic_subtype') else '',
+          'email': self.email,
+      }
 
-        if parent_partner:
-            # EXISTING PARENT - Update basic info first, then calculate privileges from ALL children
-            _logger.info("Found existing parent: %s (ID: %s)", parent_partner.name, parent_partner.id)
-            
-            # Update basic parent information first
-            parent_partner.write(parent_vals)
-            
-            # Get ALL student admissions for this parent (including current one)
-            all_admissions = self.env['student.admission'].search([
-                ('parent_national_id', '=', self.parent_national_id),
-                ('state', 'in', ['new', 'enrolled', 'student'])  # Include all active states
-            ])
-            
-            # Calculate what parent should have based on ALL children using OR logic
-            should_have_guardian = any(admission.is_guardian for admission in all_admissions)
-            should_have_parking = any(admission.is_parking for admission in all_admissions)
-            
-            _logger.info("Found %d admissions for parent", len(all_admissions))
-            _logger.info("Current parent privileges: Guardian=%s, Parking=%s", parent_partner.is_guardian, parent_partner.is_parking)
-            _logger.info("Should have privileges: Guardian=%s, Parking=%s", should_have_guardian, should_have_parking)
-            
-            # Update parent privileges based on ALL children
-            parent_partner.write({
-                'is_guardian': should_have_guardian,
-                'is_parking': should_have_parking,
-            })
-            
-            _logger.info("✅ EXISTING PARENT UPDATED with OR logic from ALL children")
-            
-        else:
-            # NEW PARENT - Use current child's values since it's the first child
-            parent_vals.update({
-                'is_guardian': self.is_guardian,
-                'is_parking': self.is_parking,
-            })
-            
-            parent_partner = self.env['res.partner'].create(parent_vals)
-            
-            _logger.info("✅ NEW PARENT CREATED: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
+      if parent_partner:
+          # EXISTING PARENT - Use the update_parent_privileges_or_logic method
+          _logger.info("Found existing parent: %s (ID: %s)", parent_partner.name, parent_partner.id)
+          
+          # Update basic parent information first
+          parent_partner.write(parent_vals)
+          
+          # Then update privileges using OR logic
+          parent_partner.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+          
+          _logger.info("✅ EXISTING PARENT UPDATED with OR logic")
+          
+      else:
+          # NEW PARENT - Use current child's values
+          parent_vals['is_guardian'] = self.is_guardian
+          parent_vals['is_parking'] = self.is_parking
+          
+          parent_partner = self.env['res.partner'].create(parent_vals)
+          
+          _logger.info("✅ NEW PARENT CREATED: Guardian=%s, Parking=%s", self.is_guardian, self.is_parking)
 
-        _logger.info("=== SYNC CHANGES PARENT UPDATE END ===")
+      _logger.info("=== SYNC CHANGES PARENT UPDATE END ===")
 
-        # =================================================================
-        # STUDENT UPDATE LOGIC - Enhanced version with all fields
-        # =================================================================
-        
-        # Update student record with complete information
-        student_vals = {
-            'name': self.student_id.name,  # Keep the student name or update it
-            'mobile': self.mobile,
-            'email': self.email,  # Sync email
-            'student_national_id': self.student_national_id,
-            'p_name': self.p_name,
-            'parent_national_id': self.parent_national_id,
-            'phone': self.parent_mobile,
-            'birth_date': self.birth_date,
-            'gender': self.gender,
-            'is_disability': self.is_disability,
-            'disability_description': self.disability_description,
-            'is_guardian': self.is_guardian,
-            'is_parking': self.is_parking,
-            'parent_id': parent_partner.id,  # Set the parent relationship
-        }
+      # =================================================================
+      # STUDENT UPDATE LOGIC - Enhanced version with all fields
+      # =================================================================
+      
+      # Update student record with complete information
+      student_vals = {
+          'name': self.student_id.name,
+          'mobile': self.mobile,
+          'email': self.email,
+          'student_national_id': self.student_national_id,
+          'parent_national_id': self.parent_national_id,
+          'phone': self.parent_mobile,
+          'birth_date': self.birth_date,
+          'gender': self.gender,
+          'is_disability': self.is_disability,
+          'disability_description': self.disability_description,
+          'is_guardian': self.is_guardian,
+          'is_parking': self.is_parking,
+          'parent_id': parent_partner.id,
+      }
 
-        # Handle sports assignment based on member type and state
-        if self.member_type == 'regular' and self.activity_ids:
-            # Filter out academic products for regular members
-            sports_activities = self.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
-            if sports_activities:
-                student_vals['sport_id'] = [(6, 0, sports_activities.ids)]
-            else:
-                student_vals['sport_id'] = [(6, 0, [])]
-        elif self.member_type == 'academic':
-            # Academic members don't get sport assignments
-            student_vals['sport_id'] = [(6, 0, [])]
-        else:
-            # Clear sports if no member type or activities
-            student_vals['sport_id'] = [(6, 0, [])]
+      # Handle sports assignment based on member type and state
+      if self.member_type == 'regular' and self.activity_ids:
+          sports_activities = self.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
+          if sports_activities:
+              student_vals['sport_id'] = [(6, 0, sports_activities.ids)]
+          else:
+              student_vals['sport_id'] = [(6, 0, [])]
+      elif self.member_type == 'academic':
+          student_vals['sport_id'] = [(6, 0, [])]
+      else:
+          student_vals['sport_id'] = [(6, 0, [])]
 
-        # Sync student photo if present
-        if hasattr(self, 'student_photo') and self.student_photo:
-            student_vals['image_1920'] = self.student_photo
+      # Sync student photo if present
+      if hasattr(self, 'student_photo') and self.student_photo:
+          student_vals['image_1920'] = self.student_photo
 
-        # Update the student record
-        self.student_id.write(student_vals)
+      # Update the student record
+      self.student_id.write(student_vals)
 
-        # Update the admission record with parent reference
-        self.write({'parent_id': parent_partner.id})
+      # Update the admission record with parent reference
+      self.write({'parent_id': parent_partner.id})
 
-        # Update parent photo if provided
-        if self.parent_photo:
-            parent_partner.write({
-                'parent_image_1920': self.parent_photo,
-                'image_1920': self.parent_photo,
-            })
+      # Update parent photo if provided
+      if self.parent_photo:
+          parent_partner.write({
+              'parent_image_1920': self.parent_photo,
+              'image_1920': self.parent_photo,
+          })
 
-        # =================================================================
-        # INVOICE SYNC LOGIC - ONLY UPDATE SPORTS ACTIVITIES (NOT FEES)
-        # =================================================================
-        _logger.info("=== SYNC CHANGES INVOICE UPDATE START ===")
-        
-        if self.invoice_ids:
-            for invoice in self.invoice_ids.filtered(lambda inv: inv.state == 'draft'):
-                _logger.info("Updating draft invoice: %s", invoice.name)
-                
-                # Update invoice partner information
-                invoice.write({
-                    'partner_id': self.student_id.id,
-                    'invoice_origin': self.name,
-                })
-                
-                # ONLY update activity-related invoice lines, keep existing fees
-                existing_lines = invoice.invoice_line_ids
-                
-                # Remove only activity/sport related lines (products with is_sportname=True)
-                activity_lines = existing_lines.filtered(lambda line: line.product_id and line.product_id.is_sportname)
-                activity_lines.unlink()
-                
-                # Add current activity fees for regular members ONLY
-                new_activity_lines = []
-                if self.member_type == 'regular' and self.activity_ids and self.pricelist_id:
-                    # Get a default income account
-                    default_income_account = self.env['account.account'].search([
-                        ('account_type', '=', 'income')
-                    ], limit=1)
-                    
-                    if not default_income_account:
-                        default_income_account = self.env['account.account'].search([
-                            ('code', 'like', '4%')
-                        ], limit=1)
-                    
-                    if not default_income_account:
-                        default_income_account = self.env['account.account'].search([], limit=1)
-                    
-                    for activity in self.activity_ids:
-                        if activity.name != 'أكاديمية':  # Exclude academic product
-                            try:
-                                price = self.pricelist_id._get_product_price(activity, 1)
-                            except:
-                                price = activity.list_price or 0
-                            
-                            # Use product's income account or default
-                            account_id = default_income_account.id
-                            if hasattr(activity, 'property_account_income_id') and activity.property_account_income_id:
-                                account_id = activity.property_account_income_id.id
-                            
-                            new_activity_lines.append((0, 0, {
-                                'product_id': activity.id,
-                                'name': activity.name,
-                                'quantity': 1,
-                                'price_unit': price,
-                                'account_id': account_id,
-                            }))
-                
-                # Add new activity lines to invoice (keeping existing fee lines)
-                if new_activity_lines:
-                    invoice.write({'invoice_line_ids': new_activity_lines})
-                    _logger.info("✅ Invoice %s updated with %d activity lines", invoice.name, len(new_activity_lines))
-                else:
-                    _logger.info("ℹ️ No activity lines to add for invoice %s", invoice.name)
-                
-            _logger.info("=== SYNC CHANGES INVOICE UPDATE END ===")
-        else:
-            _logger.info("No invoices found to update")
-        
-        # =================================================================
-        # TRAINER/COACH SYNC - Update if trainer is assigned (with field checking)
-        # =================================================================
-        if hasattr(self, 'trainer_id') and self.trainer_id:
-            # Check if student record has coach-related fields before updating
-            coach_vals = {}
-            
-            # Check for various possible coach field names
-            if hasattr(self.student_id, 'coach_id'):
-                coach_vals['coach_id'] = self.trainer_id.id
-            elif hasattr(self.student_id, 'trainer_id'):
-                coach_vals['trainer_id'] = self.trainer_id.id
-            elif hasattr(self.student_id, 'instructor_id'):
-                coach_vals['instructor_id'] = self.trainer_id.id
-            
-            # Only update if we found a valid coach field
-            if coach_vals:
-                self.student_id.write(coach_vals)
-                _logger.info("✅ Trainer/Coach synced to student record: %s", list(coach_vals.keys())[0])
-            else:
-                _logger.info("ℹ️ No coach field found on student record - skipping coach sync")
+      # =================================================================
+      # UPDATE PARENT PRIVILEGES AND REFRESH DISPLAY NAMES
+      # =================================================================
+      if parent_partner:
+          # Update parent privileges using OR logic
+          parent_partner.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+          
+          # Force refresh of display name and p_name by invalidating cache
+          try:
+              parent_partner.invalidate_recordset(['display_name_with_children', 'display_name'])
+              all_children = parent_partner.child_ids
+              if all_children:
+                  all_children.invalidate_recordset(['p_name'])
+              _logger.info("✅ SYNC: Parent display name and children p_name cache invalidated successfully")
+          except Exception as e:
+              _logger.error("Error invalidating parent display name cache: %s", str(e))
+          
+          _logger.info("✅ SYNC: Parent updated with OR logic and display names refreshed")
 
-        # =================================================================
-        # MEMBERSHIP NUMBER SYNC (with field checking)
-        # =================================================================
-        if hasattr(self, 'membership_number') and self.membership_number:
-            # Check if student record has membership_number field
-            if hasattr(self.student_id, 'membership_number'):
-                self.student_id.write({
-                    'membership_number': self.membership_number
-                })
-                _logger.info("✅ Membership number synced to student record")
-            else:
-                _logger.info("ℹ️ No membership_number field found on student record - skipping membership sync")
+      # =================================================================
+      # INVOICE SYNC LOGIC - ONLY UPDATE SPORTS ACTIVITIES (NOT FEES)
+      # =================================================================
+      _logger.info("=== SYNC CHANGES INVOICE UPDATE START ===")
+      
+      if self.invoice_ids:
+          for invoice in self.invoice_ids.filtered(lambda inv: inv.state == 'draft'):
+              _logger.info("Updating draft invoice: %s", invoice.name)
+              
+              # Update invoice partner information
+              invoice.write({
+                  'partner_id': self.student_id.id,
+                  'invoice_origin': self.name,
+              })
+              
+              # ONLY update activity-related invoice lines, keep existing fees
+              existing_lines = invoice.invoice_line_ids
+              
+              # Remove only activity/sport related lines (products with is_sportname=True)
+              activity_lines = existing_lines.filtered(lambda line: line.product_id and line.product_id.is_sportname)
+              activity_lines.unlink()
+              
+              # Add current activity fees for regular members ONLY
+              new_activity_lines = []
+              if self.member_type == 'regular' and self.activity_ids and self.pricelist_id:
+                  # Get a default income account
+                  default_income_account = self.env['account.account'].search([
+                      ('account_type', '=', 'income')
+                  ], limit=1)
+                  
+                  if not default_income_account:
+                      default_income_account = self.env['account.account'].search([
+                          ('code', 'like', '4%')
+                      ], limit=1)
+                  
+                  if not default_income_account:
+                      default_income_account = self.env['account.account'].search([], limit=1)
+                  
+                  for activity in self.activity_ids:
+                      if activity.name != 'أكاديمية':
+                          try:
+                              price = self.pricelist_id._get_product_price(activity, 1)
+                          except:
+                              price = activity.list_price or 0
+                          
+                          # Use product's income account or default
+                          account_id = default_income_account.id
+                          if hasattr(activity, 'property_account_income_id') and activity.property_account_income_id:
+                              account_id = activity.property_account_income_id.id
+                          
+                          new_activity_lines.append((0, 0, {
+                              'product_id': activity.id,
+                              'name': activity.name,
+                              'quantity': 1,
+                              'price_unit': price,
+                              'account_id': account_id,
+                          }))
+              
+              # Add new activity lines to invoice (keeping existing fee lines)
+              if new_activity_lines:
+                  invoice.write({'invoice_line_ids': new_activity_lines})
+                  _logger.info("✅ Invoice %s updated with %d activity lines", invoice.name, len(new_activity_lines))
+              else:
+                  _logger.info("ℹ️ No activity lines to add for invoice %s", invoice.name)
+              
+          _logger.info("=== SYNC CHANGES INVOICE UPDATE END ===")
+      else:
+          _logger.info("No invoices found to update")
+      
+      # =================================================================
+      # TRAINER/COACH SYNC - Update if trainer is assigned (with field checking)
+      # =================================================================
+      if hasattr(self, 'trainer_id') and self.trainer_id:
+          # Check if student record has coach-related fields before updating
+          coach_vals = {}
+          
+          # Check for various possible coach field names
+          if hasattr(self.student_id, 'coach_id'):
+              coach_vals['coach_id'] = self.trainer_id.id
+          elif hasattr(self.student_id, 'trainer_id'):
+              coach_vals['trainer_id'] = self.trainer_id.id
+          elif hasattr(self.student_id, 'instructor_id'):
+              coach_vals['instructor_id'] = self.trainer_id.id
+          
+          # Only update if we found a valid coach field
+          if coach_vals:
+              self.student_id.write(coach_vals)
+              _logger.info("✅ Trainer/Coach synced to student record: %s", list(coach_vals.keys())[0])
+          else:
+              _logger.info("ℹ️ No coach field found on student record - skipping coach sync")
 
-        # =================================================================
-        # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT FROM ALL CHILDREN
-        # =================================================================
-        _logger.info("SYNC CHANGES FINAL SAFETY NET: Ensuring parent privileges are correct from ALL children")
-        
-        # Get ALL student admissions for this parent to recalculate privileges
-        all_admissions = self.env['student.admission'].search([
-            ('parent_national_id', '=', self.parent_national_id),
-            ('state', 'in', ['new', 'enrolled', 'student'])  # Include all active states
-        ])
-        
-        # Calculate what parent should have based on ALL children using OR logic
-        final_should_have_guardian = any(admission.is_guardian for admission in all_admissions)
-        final_should_have_parking = any(admission.is_parking for admission in all_admissions)
-        
-        _logger.info("FINAL CHECK: Found %d total admissions for parent", len(all_admissions))
-        _logger.info("FINAL CHECK: Should have privileges: Guardian=%s, Parking=%s", final_should_have_guardian, final_should_have_parking)
-        
-        # Update parent with final calculated privileges
-        parent_partner.write({
-            'is_guardian': final_should_have_guardian,
-            'is_parking': final_should_have_parking,
-        })
-        
-        _logger.info("SYNC CHANGES FINAL SAFETY NET: Parent privileges confirmed from ALL children")
+      # =================================================================
+      # MEMBERSHIP NUMBER SYNC (with field checking)
+      # =================================================================
+      if hasattr(self, 'membership_number') and self.membership_number:
+          # Check if student record has membership_number field
+          if hasattr(self.student_id, 'membership_number'):
+              self.student_id.write({
+                  'membership_number': self.membership_number
+              })
+              _logger.info("✅ Membership number synced to student record")
+          else:
+              _logger.info("ℹ️ No membership_number field found on student record - skipping membership sync")
 
-        # Show comprehensive success message
-        synced_items = [
-            "✅ Parent record updated",
-            "✅ Student record updated", 
-            "✅ Parent privileges calculated with OR logic",
-            "✅ Photos synchronized"
-        ]
-        
-        if self.invoice_ids and any(inv.state == 'draft' for inv in self.invoice_ids):
-            synced_items.append("✅ Draft invoices updated")
-        
-        # Only add trainer sync message if we actually found and updated coach fields
-        if hasattr(self, 'trainer_id') and self.trainer_id:
-            coach_field_exists = any(hasattr(self.student_id, field) for field in ['coach_id', 'trainer_id', 'instructor_id'])
-            if coach_field_exists:
-                synced_items.append("✅ Trainer/Coach information synced")
-        
-        # Only add membership sync message if field exists
-        if hasattr(self, 'membership_number') and self.membership_number and hasattr(self.student_id, 'membership_number'):
-            synced_items.append("✅ Membership number synced")
-            
-        if self.activity_ids:
-            synced_items.append("✅ Sports activities synchronized")
-        
-        success_message = "All changes synced successfully!\n\n" + "\n".join(synced_items)
-        
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Sync Complete',
-                'message': success_message,
-                'type': 'success',
-                'sticky': True,  # Make it sticky so user can read all items
-            }
-        }
+      # =================================================================
+      # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES AND DISPLAY NAMES ARE CORRECT
+      # =================================================================
+      if parent_partner:
+          _logger.info("SYNC FINAL SAFETY NET: Ensuring parent privileges are correct")
+          
+          # Use the proven OR logic update method one more time
+          parent_partner.update_parent_privileges_or_logic(self.is_guardian, self.is_parking)
+          
+          # Final refresh of parent display name and children p_name after sync
+          try:
+              parent_partner.invalidate_recordset(['display_name_with_children', 'display_name'])
+              all_children = parent_partner.child_ids
+              if all_children:
+                  all_children.invalidate_recordset(['p_name'])
+              _logger.info("✅ SYNC FINAL: Parent display name and children p_name cache invalidated successfully")
+          except Exception as e:
+              _logger.error("Error in final display name cache invalidation: %s", str(e))
+          
+          _logger.info("SYNC FINAL SAFETY NET: Parent privileges and display names confirmed")
+
+      # Show comprehensive success message
+      synced_items = [
+          "✅ Parent record updated",
+          "✅ Student record updated", 
+          "✅ Parent privileges calculated with OR logic",
+          "✅ Parent and children display names refreshed",
+          "✅ Photos synchronized"
+      ]
+      
+      if self.invoice_ids and any(inv.state == 'draft' for inv in self.invoice_ids):
+          synced_items.append("✅ Draft invoices updated")
+      
+      # Only add trainer sync message if we actually found and updated coach fields
+      if hasattr(self, 'trainer_id') and self.trainer_id:
+          coach_field_exists = any(hasattr(self.student_id, field) for field in ['coach_id', 'trainer_id', 'instructor_id'])
+          if coach_field_exists:
+              synced_items.append("✅ Trainer/Coach information synced")
+      
+      # Only add membership sync message if field exists
+      if hasattr(self, 'membership_number') and self.membership_number and hasattr(self.student_id, 'membership_number'):
+          synced_items.append("✅ Membership number synced")
+          
+      if self.activity_ids:
+          synced_items.append("✅ Sports activities synchronized")
+      
+      success_message = "All changes synced successfully!\n\n" + "\n".join(synced_items)
+      
+      return {
+          'type': 'ir.actions.client',
+          'tag': 'display_notification',
+          'params': {
+              'title': 'Sync Complete',
+              'message': success_message,
+              'type': 'success',
+              'sticky': True,
+          }
+      }
+    
+
+
 
     def action_cancel(self):
         for record in self:
