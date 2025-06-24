@@ -111,8 +111,19 @@ class StudentAdmission(models.Model):
 
             created_invoices = self.env['account.move']
 
+            # Get registration date (create_date) for comparison with fee end dates
+            registration_date = self.create_date.date() if self.create_date else date.today()
+            _logger.info(f"Registration date for admission {self.name}: {registration_date}")
+
             # Create one invoice per fee
             for fee in fees:
+                # Check if registration is after fee end date
+                is_late_registration = fee.end_date and registration_date > fee.end_date
+                
+                if is_late_registration:
+                    _logger.info(f"Late registration detected for fee {fee.name}. Registration date: {registration_date}, Fee end date: {fee.end_date}")
+                    _logger.info(f"Will exclude activity fees and only include fixed fees for fee {fee.name}")
+
                 # Use today's date for invoice_date to avoid sequence mismatch, but keep due date as fee start date
                 today = date.today()
 
@@ -139,37 +150,40 @@ class StudentAdmission(models.Model):
 
                 invoice_lines = []
 
-                # Add lines for all sports/activities (activity_ids)
-                for sport_product in self.activity_ids:
-                    if not sport_product.is_sportname:
-                        _logger.warning(f"Skipping non-sport product in activities for fee {fee.name}: {sport_product.name}")
-                        continue
+                # Add lines for all sports/activities (activity_ids) - ONLY if not late registration
+                if not is_late_registration:
+                    for sport_product in self.activity_ids:
+                        if not sport_product.is_sportname:
+                            _logger.warning(f"Skipping non-sport product in activities for fee {fee.name}: {sport_product.name}")
+                            continue
 
-                    # Check if product has is_guardian tag and skip if guardian is not true
-                    if self._should_skip_product_based_on_guardian(sport_product):
-                        _logger.info(f"Skipping sport product '{sport_product.name}' for fee {fee.name} due to guardian requirement not met")
-                        continue
+                        # Check if product has is_guardian tag and skip if guardian is not true
+                        if self._should_skip_product_based_on_guardian(sport_product):
+                            _logger.info(f"Skipping sport product '{sport_product.name}' for fee {fee.name} due to guardian requirement not met")
+                            continue
 
-                    # Apply pricelist for sport products - use student for pricing
-                    price = pricelist_to_use._get_product_price(
-                        product=sport_product,
-                        quantity=1.0,
-                        partner=self.student_id,  # Use student for pricing
-                        date=today,
-                    )
-                    final_price_unit_sport = price if price else sport_product.lst_price
-                    _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
-                                 sport_product.name, fee.name, final_price_unit_sport, price, sport_product.lst_price)
+                        # Apply pricelist for sport products - use student for pricing
+                        price = pricelist_to_use._get_product_price(
+                            product=sport_product,
+                            quantity=1.0,
+                            partner=self.student_id,  # Use student for pricing
+                            date=today,
+                        )
+                        final_price_unit_sport = price if price else sport_product.lst_price
+                        _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
+                                     sport_product.name, fee.name, final_price_unit_sport, price, sport_product.lst_price)
 
-                    invoice_lines.append((0, 0, {
-                        'product_id': sport_product.id,
-                        'name': f"{sport_product.name} - {fee.name}",
-                        'product_uom_id': sport_product.uom_id.id,
-                        'price_unit': final_price_unit_sport,
-                        'quantity': 1.0,
-                    }))
+                        invoice_lines.append((0, 0, {
+                            'product_id': sport_product.id,
+                            'name': f"{sport_product.name} - {fee.name}",
+                            'product_uom_id': sport_product.uom_id.id,
+                            'price_unit': final_price_unit_sport,
+                            'quantity': 1.0,
+                        }))
+                else:
+                    _logger.info(f"Skipping activity fees for fee {fee.name} due to late registration")
 
-                # Add lines for the fee's specific products (if any)
+                # Add lines for the fee's specific products (if any) - These are fixed fees like ID card, form fees, guardian fees
                 if fee.product_ids:
                     for product in fee.product_ids:
                         # Check if product has is_guardian tag and skip if guardian is not true
@@ -207,8 +221,13 @@ class StudentAdmission(models.Model):
 
                     invoice = self.env['account.move'].sudo().create(invoice_vals)
                     created_invoices += invoice
-                    _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s", 
-                                invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
+                    
+                    if is_late_registration:
+                        _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s (LATE REGISTRATION - FIXED FEES ONLY)", 
+                                    invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
+                    else:
+                        _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s", 
+                                    invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
                     
                     # Add a message to the invoice about the parent
                     if self.parent_id:

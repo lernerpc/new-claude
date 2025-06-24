@@ -501,6 +501,33 @@ class StudentRegistration(http.Controller):
             _logger.error("Error getting activity price: %s", str(e))
             return {'price': 0}
 
+    @http.route('/check_late_registration', type='json', auth='public', website=True, csrf=False)
+    def check_late_registration(self, **kw):
+        """Check if current registration is late by comparing with fee end dates"""
+        try:
+            from datetime import date
+            current_date = date.today()
+            
+            # Get all membership fees
+            fees = request.env['sport.membership.fees'].sudo().search([], order='sequence_id asc')
+            is_late_registration = False
+            
+            if fees:
+                # Check if current date is after any fee end date
+                for fee in fees:
+                    if fee.end_date and current_date > fee.end_date:
+                        is_late_registration = True
+                        break
+            
+            return {
+                'is_late_registration': is_late_registration,
+                'current_date': current_date.strftime('%Y-%m-%d'),
+                'message': 'تسجيل متأخر - سيتم احتساب الرسوم الثابتة فقط' if is_late_registration else 'تسجيل في الوقت المحدد'
+            }
+        except Exception as e:
+            _logger.error("Error checking late registration: %s", str(e))
+            return {'is_late_registration': False, 'error': str(e)}
+
     @http.route('/print/registration/<int:registration_id>', type='http', auth='user')
     def print_registration(self, registration_id):
         registration = request.env['student.admission'].browse(registration_id)
