@@ -90,10 +90,8 @@ class StudentAdmission(models.Model):
 
             _logger.info("Using pricelist: %s (ID: %s) for admission %s", pricelist_to_use.name, pricelist_to_use.id, self.name)
 
-            # IMPORTANT: Set up fiscal parent relationship before creating invoices
             self._ensure_fiscal_parent_setup()
 
-            # Fetch membership fees, sorted by sequence_id
             fees = self.env['sport.membership.fees'].search([], order='sequence_id asc')
             _logger.info(f"Found {len(fees)} fees: {fees.mapped('name')}")
 
@@ -111,125 +109,105 @@ class StudentAdmission(models.Model):
 
             created_invoices = self.env['account.move']
 
-            # Get registration date (create_date) for comparison with fee end dates
             registration_date = self.create_date.date() if self.create_date else date.today()
             _logger.info(f"Registration date for admission {self.name}: {registration_date}")
 
-            # Create one invoice per fee
-            for fee in fees:
-                # Check if registration is after fee end date
-                is_late_registration = fee.end_date and registration_date > fee.end_date
-                
-                if is_late_registration:
-                    _logger.info(f"Late registration detected for fee {fee.name}. Registration date: {registration_date}, Fee end date: {fee.end_date}")
-                    _logger.info(f"Will exclude activity fees and only include fixed fees for fee {fee.name}")
+            valid_fees = [fee for fee in fees if registration_date <= fee.end_date]
 
-                # Use today's date for invoice_date to avoid sequence mismatch, but keep due date as fee start date
+            if not valid_fees:
+                raise ValidationError(_('No valid membership fees for the registration date.'))
+
+            first_fee = True
+            for fee in valid_fees:
                 today = date.today()
-
-                # ALWAYS create invoice on student account
                 invoice_vals = {
                     'invoice_origin': self.name or '',
                     'move_type': 'out_invoice',
                     'ref': f"Invoice for {fee.name} - {self.name}",
                     'journal_id': sale_journals.id,
-                    'partner_id': self.student_id.id,  # ✅ ALWAYS use student as invoice partner
+                    'partner_id': self.student_id.id,
                     'invoice_date': today,
                     'invoice_date_due': fee.start_date,
                     'currency_id': self.student_id.currency_id.id or self.env.company.currency_id.id,
                     'company_id': self.env.company.id,
                     'student_admission_id': self.id,
-                    # Don't set name here - let Odoo handle it in create()
                 }
-                
-                # Add a note about parent if exists
                 if self.parent_id:
                     invoice_vals['narration'] = f"Student: {self.student_id.name}\nParent/Guardian: {self.parent_id.name}"
-                
                 _logger.debug("Invoice header values for fee %s: %s", fee.name, invoice_vals)
 
                 invoice_lines = []
 
-                # Add lines for all sports/activities (activity_ids) - ONLY if not late registration
-                if not is_late_registration:
-                    for sport_product in self.activity_ids:
-                        if not sport_product.is_sportname:
-                            _logger.warning(f"Skipping non-sport product in activities for fee {fee.name}: {sport_product.name}")
-                            continue
+                # For the first valid fee: add both fixed and activity fees
+                # For subsequent valid fees: add only activity fees
+                if first_fee:
+                    # Add fixed fees (fee.product_ids), but only if not already invoiced for this student
+                    if fee.product_ids:
+                        for product in fee.product_ids:
+                            # Check if student has already been invoiced for this fixed product
+                            already_invoiced = self.env['account.move.line'].search([
+                                ('partner_id', '=', self.student_id.id),
+                                ('product_id', '=', product.id),
+                                ('move_id.state', '!=', 'cancel'),
+                                ('move_id.move_type', '=', 'out_invoice'),
+                            ], limit=1)
+                            if already_invoiced:
+                                _logger.info(f"Student {self.student_id.name} already invoiced for {product.name}, skipping.")
+                                continue
+                            if self._should_skip_product_based_on_guardian(product):
+                                _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to guardian requirement not met")
+                                continue
+                            price = pricelist_to_use._get_product_price(
+                                product=product,
+                                quantity=1.0,
+                                partner=self.student_id,
+                                date=today,
+                            )
+                            final_price_unit_fee_product = price if price else product.lst_price
+                            _logger.info("Price for fee product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
+                                         product.name, fee.name, final_price_unit_fee_product, price, product.lst_price)
+                            invoice_lines.append((0, 0, {
+                                'product_id': product.id,
+                                'name': f"{product.name} - {fee.name}",
+                                'product_uom_id': product.uom_id.id,
+                                'price_unit': final_price_unit_fee_product,
+                                'quantity': 1,
+                            }))
+                    else:
+                        _logger.info(f"No specific products configured for fee {fee.name}")
 
-                        # Check if product has is_guardian tag and skip if guardian is not true
-                        if self._should_skip_product_based_on_guardian(sport_product):
-                            _logger.info(f"Skipping sport product '{sport_product.name}' for fee {fee.name} due to guardian requirement not met")
-                            continue
+                # Add activity fees for all valid fees
+                for sport_product in self.activity_ids:
+                    if not sport_product.is_sportname:
+                        _logger.warning(f"Skipping non-sport product in activities for fee {fee.name}: {sport_product.name}")
+                        continue
+                    if self._should_skip_product_based_on_guardian(sport_product):
+                        _logger.info(f"Skipping sport product '{sport_product.name}' for fee {fee.name} due to guardian requirement not met")
+                        continue
+                    price = pricelist_to_use._get_product_price(
+                        product=sport_product,
+                        quantity=1.0,
+                        partner=self.student_id,
+                        date=today,
+                    )
+                    final_price_unit_sport = price if price else sport_product.lst_price
+                    _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
+                                 sport_product.name, fee.name, final_price_unit_sport, price, sport_product.lst_price)
+                    invoice_lines.append((0, 0, {
+                        'product_id': sport_product.id,
+                        'name': f"{sport_product.name} - {fee.name}",
+                        'product_uom_id': sport_product.uom_id.id,
+                        'price_unit': final_price_unit_sport,
+                        'quantity': 1.0,
+                    }))
 
-                        # Apply pricelist for sport products - use student for pricing
-                        price = pricelist_to_use._get_product_price(
-                            product=sport_product,
-                            quantity=1.0,
-                            partner=self.student_id,  # Use student for pricing
-                            date=today,
-                        )
-                        final_price_unit_sport = price if price else sport_product.lst_price
-                        _logger.info("Price for sport '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
-                                     sport_product.name, fee.name, final_price_unit_sport, price, sport_product.lst_price)
-
-                        invoice_lines.append((0, 0, {
-                            'product_id': sport_product.id,
-                            'name': f"{sport_product.name} - {fee.name}",
-                            'product_uom_id': sport_product.uom_id.id,
-                            'price_unit': final_price_unit_sport,
-                            'quantity': 1.0,
-                        }))
-                else:
-                    _logger.info(f"Skipping activity fees for fee {fee.name} due to late registration")
-
-                # Add lines for the fee's specific products (if any) - These are fixed fees like ID card, form fees, guardian fees
-                if fee.product_ids:
-                    for product in fee.product_ids:
-                        # Check if product has is_guardian tag and skip if guardian is not true
-                        if self._should_skip_product_based_on_guardian(product):
-                            _logger.info(f"Skipping fee product '{product.name}' for fee {fee.name} due to guardian requirement not met")
-                            continue
-
-                        # Apply pricelist for fee-specific products - use student for pricing
-                        price = pricelist_to_use._get_product_price(
-                            product=product,
-                            quantity=1.0,
-                            partner=self.student_id,  # Use student for pricing
-                            date=today,
-                        )
-                        final_price_unit_fee_product = price if price else product.lst_price
-                        _logger.info("Price for fee product '%s' (Fee: %s): %s (Pricelist: %s, List: %s)",
-                                     product.name, fee.name, final_price_unit_fee_product, price, product.lst_price)
-
-                        invoice_lines.append((0, 0, {
-                            'product_id': product.id,
-                            'name': f"{product.name} - {fee.name}",
-                            'product_uom_id': product.uom_id.id,
-                            'price_unit': final_price_unit_fee_product,
-                            'quantity': 1,
-                        }))
-                else:
-                    _logger.info(f"No specific products configured for fee {fee.name}")
-
-                # Create the invoice only if there are lines to add
                 if invoice_lines:
                     invoice_vals['invoice_line_ids'] = invoice_lines
-
-                    # Add pricelist_id to the invoice for our extension
                     invoice_vals['pricelist_id'] = pricelist_to_use.id
-
                     invoice = self.env['account.move'].sudo().create(invoice_vals)
                     created_invoices += invoice
-                    
-                    if is_late_registration:
-                        _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s (LATE REGISTRATION - FIXED FEES ONLY)", 
-                                    invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
-                    else:
-                        _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s", 
-                                    invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
-                    
-                    # Add a message to the invoice about the parent
+                    _logger.info("Created invoice: %s (ID: %s) for fee %s and admission %s on student %s", 
+                                invoice.name, invoice.id, fee.name, self.name, self.student_id.name)
                     if self.parent_id:
                         invoice.message_post(
                             body=f"This invoice is for student {self.student_id.name}. "
@@ -238,18 +216,17 @@ class StudentAdmission(models.Model):
                 else:
                     _logger.warning(f"No invoice lines generated for fee {fee.name} for admission {self.name}. Skipping invoice creation for this fee.")
 
+                first_fee = False
+
             if not created_invoices:
                 raise ValidationError(_('No invoices were created. Please ensure there are activities selected and/or fees with products.'))
 
             self.is_invoiced = True
             _logger.info(f"Successfully created {len(created_invoices)} invoices for admission {self.name}")
 
-            # Send notification to parent if exists
             if self.parent_id and self.parent_id.email:
-                # Log that parent will be notified
                 _logger.info(f"Parent {self.parent_id.name} will be notified about invoices for their child {self.student_id.name}")
 
-            # Return action to view all created invoices
             return {
                 'name': 'Created Invoices',
                 'type': 'ir.actions.act_window',
@@ -260,7 +237,6 @@ class StudentAdmission(models.Model):
             }
 
         except ValidationError:
-            # Re-raise ValidationError directly
             raise
         except Exception as e:
             _logger.error("An unexpected error occurred while creating invoices for admission %s: %s", self.name, str(e))
