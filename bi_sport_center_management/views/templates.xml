@@ -2419,4 +2419,6 @@ You need to login first!</p>
             </div>
         </div>
     </template>
+
+    <!-- Removed the website_schedule_menu template to avoid XPath errors. Use the Website Menu Editor for menu management. -->
 </odoo>

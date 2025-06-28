@@ -22,14 +22,6 @@ class ResPartner(models.Model):
     disability_description = fields.Text(string="Disability Description")
     is_sport = fields.Boolean(string="Is Sport", readonly=True)
 
-    # Override p_name to be computed from parent's display name with children
-    p_name = fields.Char(
-        string="Parent Name", 
-        compute='_compute_p_name',
-        store=False,  # Don't store to always get fresh data
-        help="Parent name with all children's names"
-    )
-
     # Invoice related fields - Keep original One2many but fix the count and payment state logic
     invoice_ids = fields.One2many('account.move', 'partner_id', string='Invoices')
     invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count')
@@ -54,68 +46,6 @@ class ResPartner(models.Model):
         readonly=True,
         help="Date of the latest payment for this partner"
     )
-
-    # Add a computed field for display name with children - NO STORE!
-    display_name_with_children = fields.Char(
-        string='Display Name with Children',
-        compute='_compute_display_name_with_children'
-        # Removed store=True to avoid database column creation
-    )
-
-    @api.depends('parent_id', 'parent_id.name', 'parent_id.child_ids.name')
-    def _compute_p_name(self):
-        """Compute p_name to show parent name with all children"""
-        for partner in self:
-            if partner.parent_id and partner.parent_id.is_parent:
-                # Get all children of this parent (including current student)
-                all_children = partner.parent_id.child_ids.filtered(lambda c: c.is_student)
-                children_names = all_children.mapped('name')
-                
-                if children_names:
-                    partner.p_name = f"{partner.parent_id.name} ({', '.join(children_names)})"
-                else:
-                    partner.p_name = partner.parent_id.name
-            else:
-                # Fallback for records without parent relationship
-                partner.p_name = partner.p_name or ""
-
-    @api.depends('name', 'is_parent', 'child_ids.name')
-    def _compute_display_name_with_children(self):
-        for partner in self:
-            if partner.is_parent and partner.child_ids:
-                # Get children names (students related to this parent)
-                children_names = partner.child_ids.filtered(lambda c: c.is_student).mapped('name')
-                if children_names:
-                    partner.display_name_with_children = f"{partner.name} ({', '.join(children_names)})"
-                else:
-                    partner.display_name_with_children = partner.name
-            else:
-                partner.display_name_with_children = partner.name
-
-    # Override the name_get method to use the new display format
-    def name_get(self):
-        result = []
-        for partner in self:
-            if partner.is_parent and partner.child_ids:
-                children_names = partner.child_ids.filtered(lambda c: c.is_student).mapped('name')
-                if children_names:
-                    name = f"{partner.name} ({', '.join(children_names)})"
-                else:
-                    name = partner.name
-            else:
-                name = partner.name
-            result.append((partner.id, name))
-        return result
-
-    # Override display_name computation if you prefer this approach
-    @api.depends('name', 'is_parent', 'child_ids.name')
-    def _compute_display_name(self):
-        super()._compute_display_name()
-        for partner in self:
-            if partner.is_parent and partner.child_ids:
-                children_names = partner.child_ids.filtered(lambda c: c.is_student).mapped('name')
-                if children_names:
-                    partner.display_name = f"{partner.name} ({', '.join(children_names)})"
 
     def update_parent_privileges_or_logic(self, new_guardian, new_parking):
         """
@@ -179,17 +109,6 @@ class ResPartner(models.Model):
                 _logger.info("Fallback ORM update completed")
             except Exception as orm_error:
                 _logger.error("ORM update also failed: %s", str(orm_error))
-
-        # Force recomputation of display name after privilege update
-        try:
-            self.invalidate_recordset(['display_name_with_children', 'display_name'])
-            # Also invalidate p_name for all children
-            all_children = self.child_ids
-            if all_children:
-                all_children.invalidate_recordset(['p_name'])
-                _logger.info("✅ Parent and children p_name cache invalidated")
-        except Exception as e:
-            _logger.error("Error invalidating display name cache: %s", str(e))
 
     def _sql_update_privileges(self, guardian, parking):
         """Direct SQL update method (legacy - kept for compatibility)"""

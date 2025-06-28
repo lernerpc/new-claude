@@ -4,7 +4,7 @@
 from datetime import datetime, date
 from odoo import _, fields, http
 from dateutil.relativedelta import relativedelta
-from odoo.http import request, content_disposition
+from odoo.http import request, content_disposition, route, Controller
 from operator import itemgetter
 from odoo.tools.translate import _
 from odoo.tools import groupby as groupbyelem
@@ -159,7 +159,7 @@ class StudentRegistration(http.Controller):
                     'name': name,
                     'mobile': mobile,
                     'student_national_id': student_national_id,
-                    # Remove p_name assignment - it will be computed automatically from parent relationship
+                    'p_name': self.remove2(kw.get('parent_fullname')),
                     'parent_national_id': parent_national_id,
                     'phone': parent_mobile,
                     'birth_date': kw.get('birth_date'),
@@ -169,32 +169,12 @@ class StudentRegistration(http.Controller):
                     'is_student': True,
                     'is_guardian': current_is_guardian,
                     'is_parking': current_is_parking,
-                    'parent_id': parent_partner.id,  # Set the parent relationship - p_name will compute from this
+                    'parent_id': parent_partner.id,  # Set the parent relationship
                 }
                 if student_photo_data:
                     partner_vals['image_1920'] = student_photo_data
 
                 student_partner = request.env['res.partner'].sudo().create(partner_vals)
-
-                # =================================================================
-                # UPDATE PARENT PRIVILEGES AND REFRESH DISPLAY NAME
-                # =================================================================
-                if student_partner and parent_partner:
-                    # Update parent privileges using OR logic
-                    parent_partner.update_parent_privileges_or_logic(current_is_guardian, current_is_parking)
-                    
-                    # Force refresh of display name and p_name by invalidating cache
-                    try:
-                        parent_partner.invalidate_recordset(['display_name_with_children', 'display_name'])
-                        # Also invalidate p_name for all children including the new one
-                        all_children = parent_partner.child_ids
-                        if all_children:
-                            all_children.invalidate_recordset(['p_name'])
-                        _logger.info("✅ PARENT display name and children p_name cache invalidated successfully")
-                    except Exception as e:
-                        _logger.error("Error invalidating parent display name cache: %s", str(e))
-                    
-                    _logger.info("✅ PARENT UPDATED with OR logic and display names refreshed")
 
                 if student_partner:
                     # Handle activities and pricelist based on member type
@@ -272,7 +252,7 @@ class StudentRegistration(http.Controller):
                     admission = request.env['student.admission'].sudo().create(admission_vals)
 
                     # =================================================================
-                    # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES AND DISPLAY NAME ARE CORRECT
+                    # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT
                     # =================================================================
                     if admission and admission.parent_id:
                         _logger.info("FINAL SAFETY NET: Ensuring parent privileges are correct")
@@ -283,24 +263,19 @@ class StudentRegistration(http.Controller):
                             admission.is_parking
                         )
                         
-                        # Final refresh of parent display name and children p_name after admission creation
-                        try:
-                            admission.parent_id.invalidate_recordset(['display_name_with_children', 'display_name'])
-                            # Also invalidate p_name for all children
-                            all_children = admission.parent_id.child_ids
-                            if all_children:
-                                all_children.invalidate_recordset(['p_name'])
-                            _logger.info("✅ FINAL: Parent display name and children p_name cache invalidated successfully")
-                        except Exception as e:
-                            _logger.error("Error in final display name cache invalidation: %s", str(e))
-                        
-                        _logger.info("FINAL SAFETY NET: Parent privileges and display names confirmed")
+                        _logger.info("FINAL SAFETY NET: Parent privileges confirmed")
                     
                     if member_type == 'academic':
                         message = 'تم التسجيل بنجاح كعضو أكاديمي'
                     else:
                         message = 'تم التسجيل بنجاح كعضو رياضي'
                         
+                    activities = admission.activity_ids
+                    selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
+                    for activity in activities:
+                        schedules = request.env['sport.schedule'].sudo().search([('sport_id', '=', activity.id)])
+                        schedules_by_activity[activity.id] = schedules
+                    _logger.info(f"selected_schedule_ids: {selected_schedule_ids}")
                     return request.render('bi_sport_center_management.registration_create_massage', {
                         'massage': message, 
                         'admission': admission
@@ -735,3 +710,194 @@ class EventPortal(CustomerPortal):
         pdf = request.env["ir.actions.report"].sudo()._render_qweb_pdf('event.action_report_event_registration_full_page_ticket', event_sudo.id)[0]
         report_name = event_sudo.name + '.pdf'
         return request.sresponse(pdf, headers=[('Content-Type', 'application/pdf'), ('Content-Disposition', content_disposition(report_name))])
+
+class ScheduleSelectionController(Controller):
+    @http.route('/schedule_selection/', type='http', auth='public', website=True, methods=['GET', 'POST'])
+    def schedule_selection(self, **post):
+        national_id = post.get('national_id') or request.params.get('national_id')
+        student = None
+        activities = []
+        schedules_by_activity = {}
+        selected_schedule_ids = {}
+        admission = None
+        saved = False
+        if national_id:
+            student = request.env['res.partner'].sudo().search([('student_national_id', '=', national_id)], limit=1)
+            if student:
+                admission = request.env['student.admission'].sudo().search([('student_id', '=', student.id)], order='id desc', limit=1)
+                if admission:
+                    activities = admission.activity_ids
+                    selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
+                    for activity in activities:
+                        schedules = request.env['sport.schedule'].sudo().search([('sport_id', '=', activity.id)])
+                        schedules_by_activity[activity.id] = schedules
+                    # If this is a save (not just search), update schedules
+                    if post.get('save'):
+                        for activity in activities:
+                            schedule_id = request.httprequest.form.get(f'schedule_id_{activity.id}')
+                            if schedule_id:
+                                # Find or create the selection record for this activity
+                                selection = admission.schedule_selection_ids.filtered(lambda s: s.activity_id.id == activity.id)
+                                if selection:
+                                    selection.sudo().write({'schedule_id': int(schedule_id)})
+                                else:
+                                    request.env['admission.schedule.selection'].sudo().create({
+                                        'admission_id': admission.id,
+                                        'activity_id': activity.id,
+                                        'schedule_id': int(schedule_id),
+                                    })
+                        saved = True
+                        selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
+                        return request.redirect('/')
+        return request.render('bi_sport_center_management.schedule_selection_template', {
+            'student': student,
+            'activities': activities,
+            'schedules_by_activity': schedules_by_activity,
+            'selected_schedule_ids': selected_schedule_ids,
+            'national_id': national_id,
+            'saved': saved,
+        })
+
+    @route('/schedule_selection/submit', type='http', auth='public', website=True, methods=['POST'], csrf=True)
+    def schedule_selection_submit(self, **post):
+        national_id = post.get('national_id')
+        student = None
+        activities = []
+        schedules_by_activity = {}
+        saved = False
+        admission = None
+        if national_id:
+            student = request.env['res.partner'].sudo().search([('student_national_id', '=', national_id)], limit=1)
+            if student:
+                admission = request.env['student.admission'].sudo().search([('student_id', '=', student.id)], order='id desc', limit=1)
+                if admission:
+                    activities = admission.activity_ids
+                    selected_schedule_ids = {}
+                    for activity in activities:
+                        schedule_id = request.httprequest.form.get(f'schedule_id_{activity.id}')
+                        if schedule_id:
+                            # Find or create the selection record for this activity
+                            selection = admission.schedule_selection_ids.filtered(lambda s: s.activity_id.id == activity.id)
+                            if selection:
+                                selection.sudo().write({'schedule_id': int(schedule_id)})
+                            else:
+                                request.env['admission.schedule.selection'].sudo().create({
+                                    'admission_id': admission.id,
+                                    'activity_id': activity.id,
+                                    'schedule_id': int(schedule_id),
+                                })
+                        if selected_schedule_ids:
+                            # Remove old schedule details for this admission
+                            admission.schedule_details.sudo().unlink()
+                            # Create new schedule details
+                            schedule = request.env['sport.schedule'].sudo().browse(selected_schedule_ids[activity.id])
+                            if schedule:
+                                request.env['student.schedule'].sudo().create({
+                                    'admission_id': admission.id,
+                                    'sport_id': schedule.sport_id.id,
+                                    'schedule_id': schedule.id,
+                                })
+                        # Update the admission's selected_schedule_ids
+                        selected_schedule_ids[activity.id] = admission.sudo().selected_schedule_ids.ids[-1] if admission.sudo().selected_schedule_ids else None
+                        _logger.info(f"[SCHEDULE DEBUG] After write: {admission.sudo().selected_schedule_ids}")
+                        saved = True
+        _logger.info(f"[SCHEDULE DEBUG] National ID: {national_id}, Student: {student and student.id}, Admission: {admission and admission.id}, Activities: {[a.id for a in activities]}")
+        if saved:
+            selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
+            return request.redirect('/')
+        # fallback: render as before if not saved
+        return request.render('bi_sport_center_management.schedule_selection_template', {
+            'student': student,
+            'activities': activities,
+            'schedules_by_activity': schedules_by_activity,
+            'selected_schedule_ids': selected_schedule_ids,
+            'national_id': national_id,
+            'saved': saved,
+        })
+
+class ScheduleWebsiteController(http.Controller):
+    @http.route('/schedule_selection', type='http', auth='public', website=True)
+    def schedule_selection(self, **kw):
+        national_id = kw.get('national_id')
+        student = None
+        activities = []
+        schedules_by_activity = {}
+        selected_schedule_ids = {}
+        admission = None
+        if national_id:
+            student = request.env['res.partner'].sudo().search([('student_national_id', '=', national_id)], limit=1)
+            if student:
+                admission = request.env['student.admission'].sudo().search([('student_id', '=', student.id)], order='id desc', limit=1)
+                if admission:
+                    activities = admission.activity_ids
+                    selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
+                    for activity in activities:
+                        schedules = request.env['sport.schedule'].sudo().search([('sport_id', '=', activity.id)])
+                        schedules_by_activity[activity.id] = schedules
+        return request.render('bi_sport_center_management.schedule_selection_template', {
+            'student': student,
+            'activities': activities,
+            'schedules_by_activity': schedules_by_activity,
+            'selected_schedule_ids': selected_schedule_ids,
+            'national_id': national_id,
+            'saved': False,
+        })
+
+    @http.route('/schedule_selection/submit', type='http', auth='public', website=True, methods=['POST'], csrf=True)
+    def schedule_selection_submit(self, **post):
+        national_id = post.get('national_id')
+        student = None
+        activities = []
+        schedules_by_activity = {}
+        selected_schedule_ids = {}
+        admission = None
+        saved = False
+        if national_id:
+            student = request.env['res.partner'].sudo().search([('student_national_id', '=', national_id)], limit=1)
+            if student:
+                admission = request.env['student.admission'].sudo().search([('student_id', '=', student.id)], order='id desc', limit=1)
+                if admission:
+                    activities = admission.activity_ids
+                    selected_schedule_ids = {}
+                    for activity in activities:
+                        schedule_id = request.httprequest.form.get(f'schedule_id_{activity.id}')
+                        if schedule_id:
+                            # Find or create the selection record for this activity
+                            selection = admission.schedule_selection_ids.filtered(lambda s: s.activity_id.id == activity.id)
+                            if selection:
+                                selection.sudo().write({'schedule_id': int(schedule_id)})
+                            else:
+                                request.env['admission.schedule.selection'].sudo().create({
+                                    'admission_id': admission.id,
+                                    'activity_id': activity.id,
+                                    'schedule_id': int(schedule_id),
+                                })
+                        if selected_schedule_ids:
+                            # Remove old schedule details for this admission
+                            admission.schedule_details.sudo().unlink()
+                            # Create new schedule details
+                            schedule = request.env['sport.schedule'].sudo().browse(selected_schedule_ids[activity.id])
+                            if schedule:
+                                request.env['student.schedule'].sudo().create({
+                                    'admission_id': admission.id,
+                                    'sport_id': schedule.sport_id.id,
+                                    'schedule_id': schedule.id,
+                                })
+                        # Update the admission's selected_schedule_ids
+                        selected_schedule_ids[activity.id] = admission.sudo().selected_schedule_ids.ids[-1] if admission.sudo().selected_schedule_ids else None
+                        _logger.info(f"[SCHEDULE DEBUG] After write: {admission.sudo().selected_schedule_ids}")
+                        saved = True
+        _logger.info(f"[SCHEDULE DEBUG] National ID: {national_id}, Student: {student and student.id}, Admission: {admission and admission.id}, Activities: {[a.id for a in activities]}, Selected Schedules: {selected_schedule_ids}")
+        # After collecting selected_schedule_ids from the form, ensure it's a list
+        selected_schedule_ids = selected_schedule_ids or None
+        if saved:
+            selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
+            return request.redirect('/')
+        return request.render('bi_sport_center_management.schedule_selection_template', {
+            'student': student,
+            'activities': activities,
+            'schedules_by_activity': schedules_by_activity,
+            'selected_schedule_ids': selected_schedule_ids,
+            'national_id': national_id,
+            'saved': saved,
+        })

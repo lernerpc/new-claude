@@ -17,7 +17,8 @@ class StudentInquiry(models.Model):
     level_id = fields.Many2one('res.partner', string="Sport Center", domain=[
                                ('is_sport', '=', True)])
     sport_id = fields.Many2many(
-        'product.product', string="Sport Name", domain=[('is_sportname', '=', True)])
+        'product.product', 'student_inquiry_product_sport_rel', 'inquiry_id', 'product_id',
+        string="Sport Name", domain=[('is_sportname', '=', True)])
     p_name = fields.Char('Parent Name', required=True)
     parent_mobile = fields.Char('Parent Mobile', required=True)
     duration = fields.Float("Duration(Days)")

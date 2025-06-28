@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="schedule_selection_template" name="Schedule Selection">
+        <t t-call="website.layout">
+            <div class="container mt32 mb32">
+                <h2>Schedule Selection</h2>
+                <form t-att-action="'/schedule_selection/'" method="post" class="form-horizontal">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <div class="form-group">
+                        <label for="national_id">National ID</label>
+                        <div class="input-group">
+                            <input type="text" name="national_id" id="national_id" class="form-control" required="required" t-att-value="national_id or ''"/>
+                            <span class="input-group-btn">
+                                <button type="submit" class="btn btn-info" name="search" value="1">Search</button>
+                            </span>
+                        </div>
+                    </div>
+                    <t t-if="student">
+                        <div class="alert alert-success">
+                            <strong>Student Name:</strong> <t t-esc="student.name"/>
+                            <br/>
+                            <strong>National ID:</strong> <t t-esc="student.student_national_id"/>
+                        </div>
+                        <t t-if="activities">
+                            <t t-foreach="activities" t-as="activity">
+                                <div class="form-group">
+                                    <label><t t-esc="activity.name"/> - Select Schedules</label>
+                                    <div>
+                                        <t t-foreach="schedules_by_activity[activity.id]" t-as="sched">
+                                            <label class="checkbox-inline">
+                                                <input type="radio" t-att-name="'schedule_id_%s' % activity.id" t-att-value="sched.id" t-att-checked="'checked' if selected_schedule_ids.get(activity.id) == sched.id else None"/>
+                                                <t t-esc="sched.day_of_week_ids and ', '.join([d.name for d in sched.day_of_week_ids]) or ''"/> (<t t-esc="sched.start_time"/>:00-<t t-esc="sched.end_time"/>:00)
+                                            </label><br/>
+                                        </t>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                        <button type="submit" class="btn btn-primary" name="save" value="1">Save Schedules</button>
+                    </t>
+                    <t t-if="not student and national_id">
+                        <div class="alert alert-danger">
+                            No student found with this National ID.
+                        </div>
+                    </t>
+                    <t t-if="saved">
+                        <div class="alert alert-info" id="save-confirm">
+                            Schedules saved successfully! Redirecting to home page...
+                        </div>
+                        <script type="text/javascript">
+                            setTimeout(function() { window.location.href = '/'; }, 2000);
+                        </script>
+                    </t>
+                </form>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Sport Schedule Tree View -->
+    <record id="sport_schedule_view_tree" model="ir.ui.view">
+        <field name="name">sport.schedule.tree</field>
+        <field name="model">sport.schedule</field>
+        <field name="arch" type="xml">
+            <tree string="Sport Schedules">
+                <field name="sport_id"/>
+                <field name="day_of_week_ids"/>
+                <field name="start_time"/>
+                <field name="end_time"/>
+                <field name="capacity"/>
+                <field name="available_spots"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Sport Schedule Form View -->
+    <record id="sport_schedule_view_form" model="ir.ui.view">
+        <field name="name">sport.schedule.form</field>
+        <field name="model">sport.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Sport Schedule">
+                <sheet>
+                    <group>
+                        <field name="sport_id"/>
+                        <field name="day_of_week_ids" widget="many2many_tags"/>
+                        <field name="start_time"/>
+                        <field name="end_time"/>
+                        <field name="capacity"/>
+                        <field name="available_spots" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Sport Schedule Action -->
+    <record id="sport_schedule_action" model="ir.actions.act_window">
+        <field name="name">Sport Schedules</field>
+        <field name="res_model">sport.schedule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <!-- Schedule Management Menu -->
+    <menuitem id="schedule_management_menu" name="Schedule Management" parent="bi_sport_center_management.student_admission_main_menu" sequence="45"/>
+    <menuitem id="sport_schedule_menu" name="Sport Schedules" parent="schedule_management_menu" action="sport_schedule_action" sequence="10"/>
+</odoo>

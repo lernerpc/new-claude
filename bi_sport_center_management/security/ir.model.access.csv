@@ -8,3 +8,10 @@ access_event_registration_portal,event.registration.portal,event.model_event_reg
 bi_sport_center_management.access_center_booking,access_center_booking,bi_sport_center_management.model_center_booking,base.group_user,1,1,1,1
 bi_sport_center_management.access_center_certificate,access_center_certificate,bi_sport_center_management.model_center_certificate,base.group_user,1,1,1,1
 bi_sport_center_management.access_sport_name,access_sport_name,bi_sport_center_management.model_sport_name,base.group_user,1,1,1,1
+access_sport_schedule_manager,sport.schedule manager,model_sport_schedule,base.group_system,1,1,1,1
+access_student_schedule_manager,student.schedule manager,model_student_schedule,base.group_system,1,1,1,1
+access_sport_schedule_user,sport.schedule user,model_sport_schedule,base.group_user,1,0,0,0
+access_student_schedule_user,student.schedule user,model_student_schedule,base.group_user,1,0,0,0
+access_sport_schedule_day_manager,sport.schedule.day manager,model_sport_schedule_day,base.group_system,1,1,1,1
+access_sport_schedule_day_user,sport.schedule.day user,model_sport_schedule_day,base.group_user,1,1,1,1
+bi_sport_center_management.access_admission_schedule_selection,access_admission_schedule_selection,bi_sport_center_management.model_admission_schedule_selection,base.group_user,1,1,1,1

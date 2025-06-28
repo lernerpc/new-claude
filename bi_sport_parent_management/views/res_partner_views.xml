@@ -101,83 +101,11 @@
                 </div>
             </xpath>
 
-            <xpath expr="//page[@name='sport_center']" position="replace">
-                <page name="parent_info" string="Parent Information" invisible="not is_parent">
-                    <group>
-                        <group string="Parent Details">
-                            <field name="children_count" string="Number of Children"/>
-                            <field name="is_guardian"/>
-                            <field name="is_parking"/>
-                            <field name="printed"/>
-                            <field name="first_print_date"/>
-                            <field name="last_print_date"/>
-                        </group>
-                        <group string="Payment Information">
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="payment_date"/>
-                            <field name="invoice_count"/>
-                        </group>
-                    </group>
-                </page>
-                <page name="children" string="Children" invisible="not is_parent">
-                    <group>
-                        <div class="oe_title">
-                            <h3>
-                                <field name="children_count" readonly="1"/>
- Children
-                            </h3>
-                        </div>
-                        <field name="child_ids" widget="one2many_list">
-                            <tree>
-                                <field name="name"/>
-                                <field name="sport_id" widget="many2many_tags"/>
-                                <field name="is_student"/>
-                                <field name="trainer_id"/>
-                                <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                                <field name="payment_date"/>
-                            </tree>
-                        </field>
-                    </group>
-                </page>
-                <page name="sport_center" string="Sport Center" invisible="is_parent">
-                    <group>
-                        <group name="sport" string="Sport Details">
-                            <field name="is_student"/>
-                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" string="Current Trainer" invisible="is_student == False"/>
-                            <field name="is_coach"/>
-                            <field name="sport_id" widget="many2many_tags"/>
-                            <field name="is_guardian" invisible="is_student == False"/>
-                            <field name="is_parking" invisible="is_student == False"/>
-                        </group>
-                        <group name="disability" string="Disability">
-                            <field name="is_disability"/>
-                            <field name="disability_description" invisible="is_disability == False"/>
-                            <field name="is_sport" readonly="true"/>
-                        </group>
-                        <group name="payment" string="Payment Information" invisible="is_student == False">
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="payment_date"/>
-                        </group>
-                    </group>
-                </page>
-                <page name="invoices" string="Invoices" groups="account.group_account_invoice">
-                    <group>
-                        <group>
-                            <field name="invoice_count" string="Invoices"/>
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="payment_date"/>
-                        </group>
-                    </group>
-                    <field name="invoice_ids" widget="one2many">
-                        <tree>
-                            <field name="name"/>
-                            <field name="invoice_date"/>
-                            <field name="amount_total"/>
-                            <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'reversed'" decoration-muted="payment_state == 'not_paid'"/>
-                            <field name="state"/>
-                        </tree>
-                    </field>
-                </page>
+            <xpath expr="//field[@name='name']" position="after">
+                <!-- Example: Add parent-specific info here -->
+                <field name="is_parent" invisible="1"/>
+                <field name="is_guardian" invisible="not is_parent"/>
+                <field name="is_parking" invisible="not is_parent"/>
             </xpath>
         </field>
     </record>

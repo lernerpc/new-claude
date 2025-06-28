@@ -10,3 +10,6 @@ from . import center_booking
 from . import center_certificate
 from . import sale_order
 from . import student_admission
+from . import sport_schedule_day
+from . import sport_schedule
+from . import student_schedule

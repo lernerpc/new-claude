@@ -108,7 +108,6 @@
                         </div>
                     </div>
                     <button string="Enroll" name="action_enroll" type="object" class="oe_highlight" invisible="state != 'new'"/>
-                    <button string="Sync Changes" name="action_sync_changes" type="object" class="btn-secondary" help="Sync all changes to parent and student records"/>
                     <!-- <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/> -->
                     <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="1"/>
                     <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'student']"/>
@@ -117,7 +116,7 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button type="object" name="action_view_invoice" class="oe_stat_button" icon="fa-pencil-square-o" invisible ="is_invoiced == False">
+                        <button type="object" name="action_view_invoice" class="oe_stat_button" icon="fa-pencil-square-o" invisible="not is_invoiced">
                             <field name='is_invoiced' invisible="1"/>
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text">Invoice</span>
@@ -138,10 +137,10 @@
                             <field name="student_id" widget="res_partner_many2one" readonly="state in ['cancel', 'student']" context="{'res_partner_search_mode': 'customer', 'show_address': 1, 'show_vat': True, 'default_is_student': False}" options='{"always_reload": True}'/>
                             <field name="mobile" widget="phone" readonly="state in ['cancel', 'student']"/>
                             <field name="email" widget="email"/>
-                            <field name="p_name" invisible="check_parent == True"/>
-                            <field name="parent_mobile" widget="phone" invisible="check_parent == True"/>
-                            <field name="p1_name" invisible="check_parent == False"/>
-                            <field name="parent1_mobile" widget="phone" invisible="check_parent == False"/>
+                            <field name="p_name" invisible="check_parent"/>
+                            <field name="parent_mobile" widget="phone" invisible="check_parent"/>
+                            <field name="p1_name" invisible="not check_parent"/>
+                            <field name="parent1_mobile" widget="phone" invisible="not check_parent"/>
                             <field name="check_parent" invisible="1"/>
                             <field name="check_register" invisible="1" readonly="1"/>
                         </group>
@@ -153,7 +152,6 @@
                         <group string="Sport Activity Details">
                             <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" readonly="state in ['cancel', 'student']"/>
                             <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" readonly="state in ['cancel', 'student']"/>
-                            <!-- <field name="duration" required= "state == 'enrolled'" readonly="state in ['cancel', 'student']"/> -->
                         </group>
                         <group name="disability" string="Disability">
                             <field name="is_disability"/>
@@ -168,8 +166,26 @@
                             <field name="parent_photo" widget="image" class="oe_avatar" options="{'size': [150, 150]}"/>
                         </group>
                     </group>
-                    <field name="disability_description" placeholder="Describe disability..." invisible="is_disability == False"/>
+                    <field name="disability_description" placeholder="Describe disability..." invisible="not is_disability"/>
                 </sheet>
+                <notebook position="inside">
+                    <page string="Schedule Details">
+                        <group>
+                            <field name="schedule_selection_ids">
+                                <tree editable="bottom">
+                                    <field name="activity_id" domain="[('id', 'in', parent.activity_ids)]"/>
+                                    <field name="schedule_id" domain="[('sport_id', '=', activity_id)]"/>
+                                </tree>
+                                <form>
+                                    <group>
+                                        <field name="activity_id" domain="[('id', 'in', parent.activity_ids)]"/>
+                                        <field name="schedule_id" domain="[('sport_id', '=', activity_id)]"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </group>
+                    </page>
+                </notebook>
             </form>
         </field>
     </record>
@@ -190,7 +206,11 @@
         <field name="name">Student</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">res.partner</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('bi_sport_center_management.view_res_partner_tree_student_schedules')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('bi_sport_center_management.view_res_partner_form_sport')})]"/>
+        <field name="search_view_id" ref="bi_sport_center_management.view_res_partner_search_student_schedules"/>
         <field name="domain">[('is_student', '=', True)]</field>
         <field name="context">{'default_is_student': True}</field>
         <field name="help" type="html">
@@ -885,6 +905,5 @@
         }
         </style>
     </template>
-
 
 </odoo>

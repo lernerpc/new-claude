@@ -30,6 +30,8 @@
         'views/event_views.xml',
         'views/center_certificate_views.xml',
         'views/purchase_views.xml',
+        'views/sport_scedule_views.xml',
+        'views/schedule_selection.xml',
     ],
     'assets': {
         'web.assets_frontend': [
