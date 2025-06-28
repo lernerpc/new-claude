@@ -500,7 +500,6 @@
                             <h6>تفاصيل الأنشطة</h6>
                             <hr/>
                             <div class="col-md-4">
-
                                 <label for="activity_id" class="form-label">اسم النشاط</label>
                                 <div id="activity-checkbox-group">
                                     <div class="row">
@@ -518,6 +517,20 @@
                                                                     <t t-esc="activity.display_name"/>
                                                                 </label>
                                                             </div>
+                                                            <!-- Schedule selection dropdown (optional) -->
+                                                            <div class="schedule-dropdown mt-2" t-attf-style="display:none;" t-att-id="'schedule_group_' + str(activity.id)">
+                                                                <label class="form-label" t-att-for="'schedule_id_' + str(activity.id)">
+                                                                    اختر الجدول الزمني (اختياري)
+                                                                </label>
+                                                                <select class="form-select" t-att-name="'schedule_id_' + str(activity.id)" t-att-id="'schedule_id_' + str(activity.id)">
+                                                                    <option value="">اختر الجدول الزمني</option>
+                                                                    <t t-foreach="activity.schedule_ids" t-as="schedule">
+                                                                        <option t-att-value="schedule.id">
+                                                                            <t t-esc="schedule.display_name"/>
+                                                                        </option>
+                                                                    </t>
+                                                                </select>
+                                                            </div>
                                                         </div>
                                                     </t>
                                                 </div>
@@ -525,21 +538,7 @@
                                         </t>
                                     </div>
                                 </div>
-
                             </div>
-                            <!-- <div class="col-md-4">
-                                <label for="center_id" class="form-label">مركز الأنشطة</label>
-                                <select required="1" id="center_id" name="center_id" class="form-select">
-                                    <option label="اختر المركز"/>
-                                    <t t-foreach="centers" t-as="center">
-                                        <option t-esc="center.display_name" t-att-value="center.id"/>
-                                    </t>
-                                </select>
-                            </div> -->
-                            <!-- <div class="col-md-4">
-                                <label for="duration" class="form-label">المدة (بالأيام)</label>
-                                <input type="text" required="1" name="duration" class="form-control" id="duration" placeholder="أدخل عدد الأيام"/>
-                            </div> -->
                             <h6>جهة اتصال طارئة</h6>
                             <hr/>
                             <div class="col-md-6">
@@ -1021,3 +1020,28 @@ You need to login first!</p>
         </div>
     </template>
 </odoo>
+
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        var checkboxes = document.querySelectorAll('input[name="activity_ids[]"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                var scheduleDiv = document.getElementById('schedule_group_' + this.value);
+                if (scheduleDiv) {
+                    if (this.checked) {
+                        scheduleDiv.style.display = 'block';
+                    } else {
+                        scheduleDiv.style.display = 'none';
+                        var select = document.getElementById('schedule_id_' + this.value);
+                        if (select) select.value = '';
+                    }
+                }
+            });
+            // On page load, show if checked
+            if (checkbox.checked) {
+                var scheduleDiv = document.getElementById('schedule_group_' + checkbox.value);
+                if (scheduleDiv) scheduleDiv.style.display = 'block';
+            }
+        });
+    });
+</script>

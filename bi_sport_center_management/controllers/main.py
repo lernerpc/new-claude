@@ -251,6 +251,17 @@ class StudentRegistration(http.Controller):
                     request.session['is_data'] = False
                     admission = request.env['student.admission'].sudo().create(admission_vals)
 
+                    # Link each selected activity to its chosen schedule (if any)
+                    if admission and activity_ids_raw:
+                        for activity_id_str in activity_ids_raw:
+                            schedule_id = kw.get(f'schedule_id_{activity_id_str}')
+                            if schedule_id:
+                                request.env['admission.schedule.selection'].sudo().create({
+                                    'admission_id': admission.id,
+                                    'activity_id': int(activity_id_str),
+                                    'schedule_id': int(schedule_id),
+                                })
+
                     # =================================================================
                     # FINAL SAFETY NET - ENSURE PARENT PRIVILEGES ARE CORRECT
                     # =================================================================
@@ -270,12 +281,6 @@ class StudentRegistration(http.Controller):
                     else:
                         message = 'تم التسجيل بنجاح كعضو رياضي'
                         
-                    activities = admission.activity_ids
-                    selected_schedule_ids = {sel.activity_id.id: sel.schedule_id.id for sel in admission.schedule_selection_ids}
-                    for activity in activities:
-                        schedules = request.env['sport.schedule'].sudo().search([('sport_id', '=', activity.id)])
-                        schedules_by_activity[activity.id] = schedules
-                    _logger.info(f"selected_schedule_ids: {selected_schedule_ids}")
                     return request.render('bi_sport_center_management.registration_create_massage', {
                         'massage': message, 
                         'admission': admission
