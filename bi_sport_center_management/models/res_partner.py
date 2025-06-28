@@ -203,7 +203,7 @@ class ResPartner(models.Model):
                         html_content += '<div style="margin: 5px 0; padding: 8px; background-color: white; border-radius: 4px; border-left: 4px solid #2E86AB;">'
                         html_content += f'<strong>📅 Days:</strong> {schedule["days"]}<br>'
                         html_content += f'<strong>⏰ Time:</strong> {schedule["time"]}<br>'
-                        html_content += f'<strong>👥 Capacity:</strong> {schedule["capacity"]} students ({schedule["available"]} spots available)'
+
                         html_content += '</div>'
                     
                     html_content += '</div>'

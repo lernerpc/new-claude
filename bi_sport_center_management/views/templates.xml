@@ -1856,10 +1856,29 @@ document.addEventListener('DOMContentLoaded', function() {
                                                         <t t-foreach="cat[1]" t-as="activity">
                                                             <div class="col-sm-6 col-md-3">
                                                                 <div class="form-check">
-                                                                    <input type="checkbox" t-att-id="'activity_' + str(activity.id)" t-att-name="'activity_ids[]'" t-att-value="activity.id" class="form-check-input"/>
+                                                                    <input type="checkbox" t-att-id="'activity_' + str(activity.id)" t-att-name="'activity_ids[]'" t-att-value="activity.id" class="form-check-input activity-checkbox"/>
                                                                     <label class="form-check-label" t-att-for="'activity_' + str(activity.id)">
                                                                         <t t-esc="activity.display_name"/>
                                                                     </label>
+                                                                </div>
+                                                                <!-- Modern schedule selection: show as cards/list, not just dropdown -->
+                                                                <div class="schedule-list mt-2" t-attf-style="display:none;" t-att-id="'schedule_group_' + str(activity.id)">
+                                                                    <t t-if="activity.schedule_ids">
+                                                                        <div class="card p-2 mb-2" style="background: #f8f9fa; border: 1px solid #007bff; border-radius: 8px;">
+                                                                            <div class="mb-1" style="font-weight: bold; color: #007bff;">اختر الجدول الرياضي:</div>
+                                                                            <t t-foreach="activity.schedule_ids" t-as="schedule">
+                                                                                <div class="form-check mb-1">
+                                                                                    <input class="form-check-input" type="radio" t-att-name="'schedule_id_' + str(activity.id)" t-att-id="'schedule_id_' + str(activity.id) + '_' + str(schedule.id)" t-att-value="schedule.id"/>
+                                                                                    <label class="form-check-label" t-att-for="'schedule_id_' + str(activity.id) + '_' + str(schedule.id)">
+                                                                                        <span style="font-weight: 500; color: #333;"> <t t-esc="schedule.display_name"/> </span>
+                                                                                    </label>
+                                                                                </div>
+                                                                            </t>
+                                                                        </div>
+                                                                    </t>
+                                                                    <t t-if="not activity.schedule_ids">
+                                                                        <div class="alert alert-warning p-2" style="font-size: 13px;">لا توجد جداول متاحة لهذا النشاط حالياً.</div>
+                                                                    </t>
                                                                 </div>
                                                             </div>
                                                         </t>
@@ -1869,6 +1888,31 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                     </div>
                                 </div>
+                                <script type="text/javascript">
+                                    document.addEventListener('DOMContentLoaded', function() {
+                                        var checkboxes = document.querySelectorAll('input[name="activity_ids[]"]');
+                                        checkboxes.forEach(function(checkbox) {
+                                            checkbox.addEventListener('change', function() {
+                                                var scheduleDiv = document.getElementById('schedule_group_' + this.value);
+                                                if (scheduleDiv) {
+                                                    if (this.checked) {
+                                                        scheduleDiv.style.display = 'block';
+                                                    } else {
+                                                        scheduleDiv.style.display = 'none';
+                                                        // Uncheck all radios in this group
+                                                        var radios = scheduleDiv.querySelectorAll('input[type="radio"]');
+                                                        radios.forEach(function(radio) { radio.checked = false; });
+                                                    }
+                                                }
+                                            });
+                                            // On page load, show if checked
+                                            if (checkbox.checked) {
+                                                var scheduleDiv = document.getElementById('schedule_group_' + checkbox.value);
+                                                if (scheduleDiv) scheduleDiv.style.display = 'block';
+                                            }
+                                        });
+                                    });
+                                </script>
                             </div>
 
                             <!-- Academic Member Notice -->
