@@ -476,12 +476,63 @@ class StudentRegistration(http.Controller):
             _logger.error("Error getting activity price: %s", str(e))
             return {'price': 0}
 
+    @http.route('/check_late_registration', type='json', auth='public', website=True, csrf=False)
+    def check_late_registration(self, **kw):
+        """Check if current registration is late by comparing with fee end dates"""
+        try:
+            from datetime import date
+            current_date = date.today()
+            
+            # Get all membership fees
+            fees = request.env['sport.membership.fees'].sudo().search([], order='sequence_id asc')
+            is_late_registration = False
+            
+            if fees:
+                # Check if current date is after any fee end date
+                for fee in fees:
+                    if fee.end_date and current_date > fee.end_date:
+                        is_late_registration = True
+                        break
+            
+            return {
+                'is_late_registration': is_late_registration,
+                'current_date': current_date.strftime('%Y-%m-%d'),
+                'message': 'تسجيل متأخر - سيتم احتساب الرسوم الثابتة فقط' if is_late_registration else 'تسجيل في الوقت المحدد'
+            }
+        except Exception as e:
+            _logger.error("Error checking late registration: %s", str(e))
+            return {'is_late_registration': False, 'error': str(e)}
+
     @http.route('/print/registration/<int:registration_id>', type='http', auth='user')
     def print_registration(self, registration_id):
         registration = request.env['student.admission'].browse(registration_id)
         if not registration:
             return request.not_found()
         return request.render('bi_sport_center_management.registration_print', {'registration': registration})
+
+    @http.route('/get_membership_fees', type='json', auth='public', website=True, csrf=False)
+    def get_membership_fees(self, **kw):
+        try:
+            fees = request.env['sport.membership.fees'].sudo().search([], order='sequence_id asc')
+            result = []
+            for fee in fees:
+                result.append({
+                    'id': fee.id,
+                    'name': fee.name,
+                    'start_date': fee.start_date.strftime('%Y-%m-%d') if fee.start_date else None,
+                    'end_date': fee.end_date.strftime('%Y-%m-%d') if fee.end_date else None,
+                    'fixed_products': [
+                        {
+                            'id': p.id,
+                            'name': p.name,
+                            'price': p.lst_price,
+                        } for p in fee.product_ids
+                    ],
+                })
+            return {'fees': result}
+        except Exception as e:
+            _logger.error("Error getting membership fees: %s", str(e))
+            return {'fees': [], 'error': str(e)}
 
 
 class EventPortal(CustomerPortal):

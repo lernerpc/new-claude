@@ -504,22 +504,36 @@ class StudentAdmission(models.Model):
                 self.activity_ids = [(3, academic_product.id)]
 
     def get_total_price(self):
-        """Calculate total price based on member type"""
+        """Calculate total price based on member type and registration date"""
         total = 0
 
-        # Base fees
+        # Get registration date for comparison with fee end dates
+        registration_date = self.create_date.date() if self.create_date else fields.Date.today()
+        
+        # Check if this is a late registration by checking all fees
+        fees = self.env['sport.membership.fees'].search([], order='sequence_id asc')
+        is_late_registration = False
+        
+        if fees:
+            # Check if registration is after any fee end date
+            for fee in fees:
+                if fee.end_date and registration_date > fee.end_date:
+                    is_late_registration = True
+                    break
+
+        # Base fees (always included)
         if self.member_type == 'academic':
             total += 50  # Academic card fee
         else:
             total += 50  # ID card fee
             total += 50  # Form fee
 
-        # Guardian fee
+        # Guardian fee (always included if guardian is selected)
         if self.is_guardian:
             total += 50
 
-        # Activity fees (only for regular members)
-        if self.member_type == 'regular' and self.activity_ids and self.pricelist_id:
+        # Activity fees (only for regular members and only if not late registration)
+        if not is_late_registration and self.member_type == 'regular' and self.activity_ids and self.pricelist_id:
             for activity in self.activity_ids:
                 if activity.name != 'أكاديمية':  # Exclude academic product
                     price = self.pricelist_id._get_product_price(activity, 1)
