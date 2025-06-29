@@ -35,10 +35,11 @@
                 <field name="last_print_date"/>
                 <field name="is_guardian"/>
                 <field name="is_parking"/>
-                <field name="children_count" string="Children" invisible="not is_parent" optional="1"/>
+                <field name="children_count" string="Children" optional="1"/>
                 <field name="invoice_count" string="Invoices"/>
                 <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
                 <field name="payment_date" string="Last Payment Date"/>
+                <field name="fees_count" string="Fees"/>
             </xpath>
         </field>
     </record>
@@ -51,8 +52,8 @@
         <field name="arch" type="xml">
 
             <xpath expr="//form" position="inside">
-                <field name="is_parent" invisible="true"/>
-                <field name="is_student" invisible="true"/>
+                <field name="is_parent" invisible="1"/>
+                <field name="is_student" invisible="1"/>
             </xpath>
 
             <xpath expr="//sheet" position="before">
@@ -79,10 +80,16 @@
                                 <field name="invoice_count" style="font-size: 16px; font-weight: bold;"/>
                             </div>
 
-                            <div invisible="not is_parent">
+                            <div>
                                 <i class="fa fa-users"/>
                                 <strong>Children:</strong>
                                 <field name="children_count" style="font-size: 16px; font-weight: bold;"/>
+                            </div>
+
+                            <div invisible="fees_count == 0">
+                                <i class="fa fa-credit-card"/>
+                                <strong>Fees:</strong>
+                                <field name="fees_count" style="font-size: 16px; font-weight: bold;"/>
                             </div>
 
                         </div>
@@ -102,16 +109,36 @@
             </xpath>
 
             <xpath expr="//field[@name='name']" position="after">
-                <!-- Example: Add parent-specific info here -->
                 <field name="is_parent" invisible="1"/>
                 <field name="is_guardian" invisible="not is_parent"/>
                 <field name="is_parking" invisible="not is_parent"/>
             </xpath>
+
+            <!-- Add Fee Details Page -->
+            <xpath expr="//sheet" position="inside">
+                <notebook>
+                    <page string="💳 Fee Details" name="fee_details" invisible="fees_count == 0">
+
+                        <!-- Fee Summary Group -->
+                        <group>
+                            <group string="Fee Summary">
+                                <field name="fees_count" string="Total Fees" readonly="1"/>
+                                <field name="invoice_count" string="Total Invoices" readonly="1"/>
+                                <field name="payment_state" widget="badge" readonly="1" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
+                                <field name="payment_date" readonly="1" invisible="not payment_date"/>
+                            </group>
+                        </group>
+
+                        <!-- Simple Fee Details Display -->
+                        <separator string="Detailed Fee Information"/>
+                        <field name="fee_details" widget="html" readonly="1" nolabel="1"/>
+
+                    </page>
+                </notebook>
+            </xpath>
+
         </field>
     </record>
-
-    <!-- Menu Item for Printing Parent IDs -->
-    <!-- <menuitem id="menu_parent_id_print" name="Print Parent ID Cards" action="action_parent_id_print_wizard_server" parent="contacts.menu_contacts" sequence="10"/> -->
 
     <template id="payment_state_styles_student" name="Student Payment State Styles">
         <style>

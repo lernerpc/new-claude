@@ -22,7 +22,7 @@ class ResPartner(models.Model):
     disability_description = fields.Text(string="Disability Description")
     is_sport = fields.Boolean(string="Is Sport", readonly=True)
 
-    # Invoice related fields - Keep original One2many but fix the count and payment state logic
+    # Invoice related fields
     invoice_ids = fields.One2many('account.move', 'partner_id', string='Invoices')
     invoice_count = fields.Integer(compute='_compute_invoice_count', string='Invoice Count')
 
@@ -47,21 +47,250 @@ class ResPartner(models.Model):
         help="Date of the latest payment for this partner"
     )
 
+    # Simple fee details field
+    fee_details = fields.Html('Fee Details', compute='_compute_fee_details', store=False)
+
+# Corrected partner fee details methods - replace in your res_partner.py
+
+
+
+# Add this field to your ResPartner class after the existing computed fields
+    
+    fees_count = fields.Integer(compute='_compute_fees_count', string='Fees Count',
+                               help="Number of membership fee invoices")
+
+    @api.depends('invoice_ids', 'child_ids.invoice_ids')
+    def _compute_fees_count(self):
+        """Compute fees count for partners"""
+        for record in self:
+            try:
+                if record.is_parent:
+                    # For parents: count their own + all children's fee invoices
+                    all_invoices = record._get_all_family_invoices(record)
+                else:
+                    # For students/regular partners: only their own invoices
+                    all_invoices = record.invoice_ids.filtered(
+                        lambda inv: inv.state == 'posted' and 
+                                    inv.move_type in ['out_invoice', 'out_refund']
+                    )
+                
+                # Get fee invoices - those that HAVE membership_fee_name
+                fee_invoices = all_invoices.filtered(
+                    lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
+                )
+                
+                record.fees_count = len(fee_invoices)
+                
+            except Exception:
+                record.fees_count = 0
+
+    @api.depends('invoice_ids', 'child_ids.invoice_ids')
+    def _compute_fee_details(self):
+        """Corrected fee details for partners - show ONLY fees"""
+        for record in self:
+            try:
+                if record.is_parent:
+                    # For parents: show children's fees
+                    html_content = record._build_parent_fee_html()
+                elif record.is_student:
+                    # For students: show their own fees
+                    html_content = record._build_student_fee_html()
+                else:
+                    html_content = '<p style="text-align: center; color: #6c757d;">No fee information available</p>'
+                
+                record.fee_details = html_content
+            except Exception as e:
+                record.fee_details = f'<p style="color: #dc3545;">Error: {str(e)}</p>'
+
+    def _build_parent_fee_html(self):
+        """Corrected: Build fee HTML for parents showing children's fees ONLY"""
+        html_content = '''
+        <div style="margin: 10px 0;">
+            <h4 style="color: #875A7B; margin-bottom: 15px;">👨‍👩‍👧‍👦 Children's Fees</h4>
+        '''
+        
+        if not self.child_ids:
+            return html_content + '<p style="text-align: center; color: #6c757d;">No children found</p></div>'
+        
+        for child in self.child_ids:
+            # Get child's invoices
+            child_invoices = child.invoice_ids.filtered(
+                lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+            )
+            
+            # CORRECTED: Get ONLY fee invoices - those that HAVE membership_fee_name
+            fee_invoices = child_invoices.filtered(
+                lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
+            )
+            
+            if fee_invoices:
+                paid_count = len(fee_invoices.filtered(lambda inv: inv.payment_state == 'paid'))
+                total_amount = sum(fee_invoices.mapped('amount_total'))
+                
+                html_content += f'''
+                <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 15px; overflow: hidden;">
+                    <div style="background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6;">
+                        <strong style="color: #875A7B;">👤 {child.name}</strong>
+                        <span style="float: right; color: #6c757d; font-size: 12px;">
+                            {paid_count}/{len(fee_invoices)} paid • {total_amount:.0f} EGP
+                        </span>
+                        <br><small style="color: #6c757d;">Showing {len(fee_invoices)} fees out of {len(child_invoices)} total invoices</small>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #f8f9fa;">
+                            <tr>
+                                <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: left; font-size: 12px;">Fee Name</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">Date</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: right; font-size: 12px;">Amount</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                '''
+                
+                for invoice in fee_invoices:
+                    # Use membership_fee_name for fee invoices
+                    fee_name = getattr(invoice, 'membership_fee_name', 'Unknown Fee')
+                    invoice_date = invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A'
+                    
+                    status_color = {
+                        'paid': '#28a745', 'partial': '#ffc107', 'in_payment': '#17a2b8',
+                        'not_paid': '#dc3545', 'reversed': '#6c757d'
+                    }.get(invoice.payment_state, '#6c757d')
+                    
+                    status_text = {
+                        'paid': 'Paid', 'partial': 'Partial', 'in_payment': 'Processing',
+                        'not_paid': 'Unpaid', 'reversed': 'Reversed'
+                    }.get(invoice.payment_state, invoice.payment_state)
+                    
+                    html_content += f'''
+                    <tr>
+                        <td style="padding: 6px; border-bottom: 1px solid #dee2e6; font-size: 12px; font-weight: bold;">{fee_name}</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">{invoice_date}</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: right; font-size: 12px; font-weight: bold;">{invoice.amount_total:.0f} EGP</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center;">
+                            <span style="background-color: {status_color}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: bold;">
+                                {status_text}
+                            </span>
+                        </td>
+                    </tr>
+                    '''
+                
+                html_content += '''
+                        </tbody>
+                    </table>
+                </div>
+                '''
+            else:
+                # Child has invoices but no fees
+                total_invoices = len(child_invoices)
+                html_content += f'''
+                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
+                    <strong>{child.name}</strong> - No membership fees found
+                    <br><small style="color: #6c757d;">(Has {total_invoices} total invoices, but none are marked as fees)</small>
+                </div>
+                '''
+        
+        html_content += '</div>'
+        return html_content
+
+    def _build_student_fee_html(self):
+        """Corrected: Build fee HTML for students showing ONLY their fees"""
+        # Get student's invoices
+        student_invoices = self.invoice_ids.filtered(
+            lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+        )
+        
+        # CORRECTED: Get ONLY fee invoices - those that HAVE membership_fee_name
+        fee_invoices = student_invoices.filtered(
+            lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
+        )
+        
+        if not fee_invoices:
+            total_invoices = len(student_invoices)
+            return f'''
+            <div style="margin: 10px 0;">
+                <h4 style="color: #875A7B; margin-bottom: 15px;">💳 My Fees</h4>
+                <p style="text-align: center; color: #6c757d;">No membership fees found</p>
+                <p style="text-align: center; color: #6c757d; font-size: 12px;">
+                    (Found {total_invoices} total invoices, but none are marked as fees)
+                </p>
+            </div>
+            '''
+        
+        paid_count = len(fee_invoices.filtered(lambda inv: inv.payment_state == 'paid'))
+        total_amount = sum(fee_invoices.mapped('amount_total'))
+        total_invoices = len(student_invoices)
+        
+        html_content = f'''
+        <div style="margin: 10px 0;">
+            <h4 style="color: #875A7B; margin-bottom: 15px;">💳 My Fees</h4>
+            <div style="background: #e9ecef; padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
+                <strong>{paid_count}/{len(fee_invoices)} Paid • {total_amount:.0f} EGP Total</strong>
+                <br><small style="color: #6c757d;">Showing {len(fee_invoices)} fees out of {total_invoices} total invoices</small>
+            </div>
+            
+            <table style="width: 100%; border-collapse: collapse; background: white; border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden;">
+                <thead style="background: #875A7B; color: white;">
+                    <tr>
+                        <th style="padding: 8px; text-align: left;">#</th>
+                        <th style="padding: 8px; text-align: left;">Fee Name</th>
+                        <th style="padding: 8px; text-align: center;">Date</th>
+                        <th style="padding: 8px; text-align: right;">Amount</th>
+                        <th style="padding: 8px; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        '''
+        
+        for index, invoice in enumerate(fee_invoices, 1):
+            # Use membership_fee_name for fee invoices
+            fee_name = getattr(invoice, 'membership_fee_name', 'Unknown Fee')
+            invoice_date = invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A'
+            
+            status_color = {
+                'paid': '#28a745', 'partial': '#ffc107', 'in_payment': '#17a2b8',
+                'not_paid': '#dc3545', 'reversed': '#6c757d'
+            }.get(invoice.payment_state, '#6c757d')
+            
+            status_text = {
+                'paid': 'Paid', 'partial': 'Partial', 'in_payment': 'Processing',
+                'not_paid': 'Unpaid', 'reversed': 'Reversed'
+            }.get(invoice.payment_state, invoice.payment_state)
+            
+            row_bg = '#f8f9fa' if index % 2 == 0 else 'white'
+            
+            html_content += f'''
+            <tr style="background-color: {row_bg};">
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">{index}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">{fee_name}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">{invoice_date}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-weight: bold;">{invoice.amount_total:.0f} EGP</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">
+                    <span style="background-color: {status_color}; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                        {status_text}
+                    </span>
+                </td>
+            </tr>
+            '''
+        
+        html_content += '''
+                </tbody>
+            </table>
+        </div>
+        '''
+        return html_content
+
     def update_parent_privileges_or_logic(self, new_guardian, new_parking):
-        """
-        Update parent privileges using OR logic to never downgrade privileges.
-        If parent currently has a privilege OR the new child has it, keep it True.
-        """
+        """Update parent privileges using OR logic"""
         self.ensure_one()
         if not self.is_parent:
             _logger.warning("Attempted to update parent privileges on non-parent record: %s", self.name)
             return
 
-        # Get current values
         current_guardian = self.is_guardian or False
         current_parking = self.is_parking or False
 
-        # Apply OR logic (True if current OR new is True)
         final_guardian = current_guardian or new_guardian
         final_parking = current_parking or new_parking
 
@@ -70,7 +299,6 @@ class ResPartner(models.Model):
         _logger.info("  New child: Guardian=%s, Parking=%s", new_guardian, new_parking)
         _logger.info("  Final (OR logic): Guardian=%s, Parking=%s", final_guardian, final_parking)
 
-        # Use SQL update directly to ensure it works
         try:
             self.env.cr.execute("""
                 UPDATE res_partner
@@ -80,7 +308,6 @@ class ResPartner(models.Model):
 
             self.env.cr.commit()
 
-            # Verify with SQL query
             self.env.cr.execute("""
                 SELECT is_guardian, is_parking
                 FROM res_partner
@@ -95,12 +322,9 @@ class ResPartner(models.Model):
                                 actual_guardian, actual_parking)
                 else:
                     _logger.error("❌ Parent privilege update FAILED!")
-                    _logger.error("  Expected: Guardian=%s, Parking=%s", final_guardian, final_parking)
-                    _logger.error("  Actual: Guardian=%s, Parking=%s", actual_guardian, actual_parking)
 
         except Exception as e:
             _logger.error("Error updating parent privileges: %s", str(e))
-            # Fallback to ORM write
             try:
                 self.write({
                     'is_guardian': final_guardian,
@@ -110,82 +334,15 @@ class ResPartner(models.Model):
             except Exception as orm_error:
                 _logger.error("ORM update also failed: %s", str(orm_error))
 
-    def _sql_update_privileges(self, guardian, parking):
-        """Direct SQL update method (legacy - kept for compatibility)"""
-        _logger.info("Direct SQL update for parent %s", self.name)
-
-        self.env.cr.execute("""
-            UPDATE res_partner
-            SET is_guardian = %s, is_parking = %s
-            WHERE id = %s
-        """, (guardian, parking, self.id))
-
-        self.env.cr.commit()
-
-        # Verify SQL update
-        self.env.cr.execute("""
-            SELECT is_guardian, is_parking
-            FROM res_partner
-            WHERE id = %s
-        """, (self.id,))
-
-        result = self.env.cr.fetchone()
-        if result:
-            _logger.info("SQL update result: Guardian=%s, Parking=%s", result[0], result[1])
-
-    def get_all_children_privileges(self):
-        """
-        Get the combined privileges from all children of this parent.
-        Returns tuple (any_guardian, any_parking)
-        """
-        self.ensure_one()
-        if not self.is_parent:
-            return (False, False)
-
-        # Get all children
-        children = self.env['res.partner'].search([('parent_id', '=', self.id)])
-
-        # Check if any child has guardian or parking privileges
-        any_guardian = any(child.is_guardian for child in children)
-        any_parking = any(child.is_parking for child in children)
-
-        _logger.info("Parent %s has %d children. Combined privileges: Guardian=%s, Parking=%s",
-                    self.name, len(children), any_guardian, any_parking)
-
-        return (any_guardian, any_parking)
-
-    def recalculate_parent_privileges(self):
-        """
-        Recalculate parent privileges based on all children.
-        Useful for fixing any inconsistencies.
-        """
-        self.ensure_one()
-        if not self.is_parent:
-            return
-
-        any_guardian, any_parking = self.get_all_children_privileges()
-
-        _logger.info("Recalculating privileges for parent %s: Guardian=%s, Parking=%s",
-                    self.name, any_guardian, any_parking)
-
-        self.write({
-            'is_guardian': any_guardian,
-            'is_parking': any_parking,
-        })
-
-        self.env.cr.commit()
-
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_invoice_count(self):
         """Compute invoice count - include children's invoices for parents"""
         for record in self:
             if record.is_parent:
-                # For parents: count their own invoices + all children's invoices
                 parent_invoices = record.invoice_ids.filtered(
                     lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                 )
 
-                # Get all children's invoices
                 children_invoices = self.env['account.move']
                 for child in record.child_ids:
                     child_customer_invoices = child.invoice_ids.filtered(
@@ -193,12 +350,10 @@ class ResPartner(models.Model):
                     )
                     children_invoices |= child_customer_invoices
 
-                # Combine parent and children invoices
                 all_invoices = parent_invoices | children_invoices
                 record.invoice_count = len(all_invoices)
 
             else:
-                # For non-parents: only count their own invoices
                 customer_invoices = record.invoice_ids.filtered(
                     lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                 )
@@ -216,10 +371,9 @@ class ResPartner(models.Model):
                  'child_ids.invoice_ids.move_type', 'child_ids.invoice_ids.invoice_date',
                  'child_ids.invoice_ids.line_ids.reconciled')
     def _compute_payment_state(self):
-        """Improved computation of payment state and date for partners and parents"""
+        """Compute payment state for partners and parents"""
         for record in self:
             if record.is_parent:
-                # For parents: consider their own + children's invoices
                 all_invoices = self._get_all_family_invoices(record)
                 
                 if not all_invoices:
@@ -227,26 +381,20 @@ class ResPartner(models.Model):
                     record.payment_date = False
                     continue
                 
-                # Get the most recent invoice by invoice_date or create_date
                 latest_invoice = sorted(
                     all_invoices,
                     key=lambda inv: inv.invoice_date or inv.create_date,
                     reverse=True
                 )[0]
                 
-                # Set payment_state based on the latest invoice
                 record.payment_state = latest_invoice.payment_state
-                
-                # Find the payment date for this invoice
                 payment_date = self._get_actual_payment_date(latest_invoice)
                 
-                # Use invoice date as fallback for partial payments with no payment date
                 if not payment_date and latest_invoice.payment_state in ['in_payment', 'partial']:
                     payment_date = latest_invoice.invoice_date
                     
                 record.payment_date = payment_date
             else:
-                # For regular partners: only consider their own invoices
                 posted_invoices = record.invoice_ids.filtered(
                     lambda inv: inv.state == 'posted' and 
                                 inv.move_type in ['out_invoice', 'out_refund']
@@ -257,33 +405,27 @@ class ResPartner(models.Model):
                     record.payment_date = False
                     continue
                 
-                # Get the most recent invoice by invoice_date or create_date
                 latest_invoice = sorted(
                     posted_invoices,
                     key=lambda inv: inv.invoice_date or inv.create_date,
                     reverse=True
                 )[0]
                 
-                # Set payment_state based on the latest invoice
                 record.payment_state = latest_invoice.payment_state
-                
-                # Find the payment date for this invoice
                 payment_date = self._get_actual_payment_date(latest_invoice)
                 
-                # Use invoice date as fallback for partial payments with no payment date
                 if not payment_date and latest_invoice.payment_state in ['in_payment', 'partial']:
                     payment_date = latest_invoice.invoice_date
                     
                 record.payment_date = payment_date
 
     def _get_all_family_invoices(self, parent):
-        """Helper method to get all invoices for a family (parent + children)"""
+        """Helper method to get all invoices for a family"""
         parent_invoices = parent.invoice_ids.filtered(
             lambda inv: inv.state == 'posted' and 
                         inv.move_type in ['out_invoice', 'out_refund']
         )
         
-        # Add children's posted invoices
         all_invoices = parent_invoices
         for child in parent.child_ids:
             child_invoices = child.invoice_ids.filtered(
@@ -295,11 +437,10 @@ class ResPartner(models.Model):
         return all_invoices
 
     def _get_actual_payment_date(self, invoice):
-        """Helper method to find the actual payment date for an invoice"""
+        """Helper method to find actual payment date"""
         payment_date = False
         
         if invoice.payment_state in ['paid', 'in_payment', 'partial']:
-            # Use direct SQL to find actual payment dates through reconciliations
             self.env.cr.execute("""
                 SELECT MAX(payment_move.date) 
                 FROM account_move_line invoice_line
@@ -327,12 +468,10 @@ class ResPartner(models.Model):
         self.ensure_one()
 
         if self.is_parent:
-            # For parents: show their own + children's invoices
             parent_invoices = self.invoice_ids.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
 
-            # Add children's invoices
             all_invoices = parent_invoices
             for child in self.child_ids:
                 child_invoices = child.invoice_ids.filtered(
@@ -341,13 +480,11 @@ class ResPartner(models.Model):
                 all_invoices |= child_invoices
 
         else:
-            # For non-parents: only their own invoices
             all_invoices = self.invoice_ids.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
 
         if len(all_invoices) == 1:
-            # Single invoice - open in form view
             return {
                 'name': 'Invoice',
                 'type': 'ir.actions.act_window',
@@ -357,7 +494,6 @@ class ResPartner(models.Model):
                 'target': 'current',
             }
         else:
-            # Multiple invoices - open in tree view
             action = {
                 'name': 'Family Invoices' if self.is_parent else 'Invoices',
                 'type': 'ir.actions.act_window',
