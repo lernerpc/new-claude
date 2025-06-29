@@ -124,6 +124,16 @@ class ResPartner(models.Model):
             'target': 'new',
             'context': {'active_ids': self.ids},
         }
+    
+    
+
+    
+    
+
+
+
+
+
 
     @api.depends('is_student', 'student_national_id')
     def _compute_current_admission(self):
@@ -137,7 +147,7 @@ class ResPartner(models.Model):
             else:
                 record.current_admission_id = False
 
-    @api.depends('current_admission_id')
+    @api.depends('current_admission_id', 'current_admission_id.activity_ids')
     def _compute_enrolled_sports(self):
         """Get the sports this student is enrolled in"""
         for record in self:
@@ -166,7 +176,7 @@ class ResPartner(models.Model):
             else:
                 record.selected_schedules = 'No schedules selected'
 
-    @api.depends('current_admission_id')
+    @api.depends('current_admission_id', 'current_admission_id.schedule_selection_ids', 'current_admission_id.schedule_selection_ids.schedule_id')
     def _compute_schedule_summary(self):
         """Create a formatted HTML summary of the student's sports and schedules"""
         for record in self:
@@ -253,13 +263,13 @@ class ResPartner(models.Model):
             return len(self.current_admission_id.schedule_selection_ids)
         return 0
 
-    @api.depends('current_admission_id')
+    @api.depends('current_admission_id', 'current_admission_id.activity_ids')
     def _compute_sports_count(self):
         """Compute the number of sports this student is enrolled in"""
         for record in self:
             record.sports_count = record.get_sports_count()
 
-    @api.depends('current_admission_id')
+    @api.depends('current_admission_id', 'current_admission_id.schedule_selection_ids')
     def _compute_schedules_count(self):
         """Compute the number of schedules this student has selected"""
         for record in self:

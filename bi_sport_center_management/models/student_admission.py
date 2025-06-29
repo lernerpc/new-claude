@@ -987,6 +987,13 @@ class StudentAdmission(models.Model):
 
     def get_schedules_for_sport(self, sport_id):
         return self.env['sport.schedule'].search([('sport_id', '=', sport_id)])
+    
+
+    @api.onchange('activity_ids')
+    def _onchange_activity_ids(self):
+        """Reset schedule selections when activities change"""
+        if self.schedule_selection_ids:
+            self.schedule_selection_ids = [(5, 0, 0)]  # Clear all schedule selections
 
     def _compute_previous_activities_schedule_ids(self):
         for rec in self:
