@@ -59,26 +59,26 @@ class ResPartner(models.Model):
     fees_count = fields.Integer(compute='_compute_fees_count', string='Fees Count',
                                help="Number of membership fee invoices")
 
+# Replace the fee-related methods in your res_partner.py with these corrected versions
+    # This clones the EXACT logic from student admission that works correctly
+
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_fees_count(self):
-        """Compute fees count for partners"""
+        """Compute fees count for partners - CLONED from student admission logic"""
         for record in self:
             try:
                 if record.is_parent:
-                    # For parents: count their own + all children's fee invoices
+                    # For parents: get their own + all children's invoices
                     all_invoices = record._get_all_family_invoices(record)
                 else:
                     # For students/regular partners: only their own invoices
                     all_invoices = record.invoice_ids.filtered(
-                        lambda inv: inv.state == 'posted' and 
-                                    inv.move_type in ['out_invoice', 'out_refund']
+                        lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                     )
                 
-                # Get fee invoices - those that HAVE membership_fee_name
-                fee_invoices = all_invoices.filtered(
-                    lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
-                )
-                
+                # CLONED LOGIC: Count only invoices that have membership_fee_name set (fee invoices)
+                # Use EXACT same filtering as student admission
+                fee_invoices = all_invoices.filtered(lambda inv: inv.membership_fee_name)
                 record.fees_count = len(fee_invoices)
                 
             except Exception:
@@ -86,7 +86,7 @@ class ResPartner(models.Model):
 
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_fee_details(self):
-        """Corrected fee details for partners - show ONLY fees"""
+        """Corrected fee details for partners - CLONED logic from student admission"""
         for record in self:
             try:
                 if record.is_parent:
@@ -103,7 +103,7 @@ class ResPartner(models.Model):
                 record.fee_details = f'<p style="color: #dc3545;">Error: {str(e)}</p>'
 
     def _build_parent_fee_html(self):
-        """Corrected: Build fee HTML for parents showing children's fees ONLY"""
+        """CORRECTED: Build fee HTML for parents showing children's fees ONLY - CLONED logic"""
         html_content = '''
         <div style="margin: 10px 0;">
             <h4 style="color: #875A7B; margin-bottom: 15px;">👨‍👩‍👧‍👦 Children's Fees</h4>
@@ -118,10 +118,8 @@ class ResPartner(models.Model):
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
             )
             
-            # CORRECTED: Get ONLY fee invoices - those that HAVE membership_fee_name
-            fee_invoices = child_invoices.filtered(
-                lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
-            )
+            # CLONED LOGIC: Get ONLY fee invoices using EXACT same filter as student admission
+            fee_invoices = child_invoices.filtered(lambda inv: inv.membership_fee_name)
             
             if fee_invoices:
                 paid_count = len(fee_invoices.filtered(lambda inv: inv.payment_state == 'paid'))
@@ -149,8 +147,8 @@ class ResPartner(models.Model):
                 '''
                 
                 for invoice in fee_invoices:
-                    # Use membership_fee_name for fee invoices
-                    fee_name = getattr(invoice, 'membership_fee_name', 'Unknown Fee')
+                    # Use membership_fee_name for fee invoices (CLONED logic)
+                    fee_name = invoice.membership_fee_name or 'Unknown Fee'
                     invoice_date = invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A'
                     
                     status_color = {
@@ -192,6 +190,91 @@ class ResPartner(models.Model):
                 '''
         
         html_content += '</div>'
+        return html_content
+
+    def _build_student_fee_html(self):
+        """CORRECTED: Build fee HTML for students showing ONLY their fees - CLONED logic"""
+        # Get student's invoices
+        student_invoices = self.invoice_ids.filtered(
+            lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+        )
+        
+        # CLONED LOGIC: Get ONLY fee invoices using EXACT same filter as student admission
+        fee_invoices = student_invoices.filtered(lambda inv: inv.membership_fee_name)
+        
+        if not fee_invoices:
+            total_invoices = len(student_invoices)
+            return f'''
+            <div style="margin: 10px 0;">
+                <h4 style="color: #875A7B; margin-bottom: 15px;">💳 My Fees</h4>
+                <p style="text-align: center; color: #6c757d;">No membership fees found</p>
+                <p style="text-align: center; color: #6c757d; font-size: 12px;">
+                    (Found {total_invoices} total invoices, but none are marked as fees)
+                </p>
+            </div>
+            '''
+        
+        paid_count = len(fee_invoices.filtered(lambda inv: inv.payment_state == 'paid'))
+        total_amount = sum(fee_invoices.mapped('amount_total'))
+        total_invoices = len(student_invoices)
+        
+        html_content = f'''
+        <div style="margin: 10px 0;">
+            <h4 style="color: #875A7B; margin-bottom: 15px;">💳 My Fees</h4>
+            <div style="background: #e9ecef; padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
+                <strong>{paid_count}/{len(fee_invoices)} Paid • {total_amount:.0f} EGP Total</strong>
+                <br><small style="color: #6c757d;">Showing {len(fee_invoices)} fees out of {total_invoices} total invoices</small>
+            </div>
+            
+            <table style="width: 100%; border-collapse: collapse; background: white; border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden;">
+                <thead style="background: #875A7B; color: white;">
+                    <tr>
+                        <th style="padding: 8px; text-align: left;">#</th>
+                        <th style="padding: 8px; text-align: left;">Fee Name</th>
+                        <th style="padding: 8px; text-align: center;">Date</th>
+                        <th style="padding: 8px; text-align: right;">Amount</th>
+                        <th style="padding: 8px; text-align: center;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        '''
+        
+        for index, invoice in enumerate(fee_invoices, 1):
+            # Use membership_fee_name for fee invoices (CLONED logic)
+            fee_name = invoice.membership_fee_name or 'Unknown Fee'
+            invoice_date = invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A'
+            
+            status_color = {
+                'paid': '#28a745', 'partial': '#ffc107', 'in_payment': '#17a2b8',
+                'not_paid': '#dc3545', 'reversed': '#6c757d'
+            }.get(invoice.payment_state, '#6c757d')
+            
+            status_text = {
+                'paid': 'Paid', 'partial': 'Partial', 'in_payment': 'Processing',
+                'not_paid': 'Unpaid', 'reversed': 'Reversed'
+            }.get(invoice.payment_state, invoice.payment_state)
+            
+            row_bg = '#f8f9fa' if index % 2 == 0 else 'white'
+            
+            html_content += f'''
+            <tr style="background-color: {row_bg};">
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">{index}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">{fee_name}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">{invoice_date}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-weight: bold;">{invoice.amount_total:.0f} EGP</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">
+                    <span style="background-color: {status_color}; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
+                        {status_text}
+                    </span>
+                </td>
+            </tr>
+            '''
+        
+        html_content += '''
+                </tbody>
+            </table>
+        </div>
+        '''
         return html_content
 
     def _build_student_fee_html(self):
