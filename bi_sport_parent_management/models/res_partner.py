@@ -103,7 +103,7 @@ class ResPartner(models.Model):
                 record.fee_details = f'<p style="color: #dc3545;">Error: {str(e)}</p>'
 
     def _build_parent_fee_html(self):
-        """CORRECTED: Build fee HTML for parents showing children's fees ONLY - CLONED logic"""
+        """FIXED: Build fee HTML for parents - remove extra filtering to match count"""
         html_content = '''
         <div style="margin: 10px 0;">
             <h4 style="color: #875A7B; margin-bottom: 15px;">👨‍👩‍👧‍👦 Children's Fees</h4>
@@ -113,12 +113,12 @@ class ResPartner(models.Model):
             return html_content + '<p style="text-align: center; color: #6c757d;">No children found</p></div>'
         
         for child in self.child_ids:
-            # Get child's invoices
+            # FIXED: Remove the state == 'posted' filter to match count logic
             child_invoices = child.invoice_ids.filtered(
-                lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+                lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
             
-            # CLONED LOGIC: Get ONLY fee invoices using EXACT same filter as student admission
+            # Use EXACT same filter as count: just membership_fee_name
             fee_invoices = child_invoices.filtered(lambda inv: inv.membership_fee_name)
             
             if fee_invoices:
@@ -139,6 +139,7 @@ class ResPartner(models.Model):
                             <tr>
                                 <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: left; font-size: 12px;">Fee Name</th>
                                 <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">Date</th>
+                                <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">State</th>
                                 <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: right; font-size: 12px;">Amount</th>
                                 <th style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">Status</th>
                             </tr>
@@ -147,7 +148,6 @@ class ResPartner(models.Model):
                 '''
                 
                 for invoice in fee_invoices:
-                    # Use membership_fee_name for fee invoices (CLONED logic)
                     fee_name = invoice.membership_fee_name or 'Unknown Fee'
                     invoice_date = invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A'
                     
@@ -161,10 +161,20 @@ class ResPartner(models.Model):
                         'not_paid': 'Unpaid', 'reversed': 'Reversed'
                     }.get(invoice.payment_state, invoice.payment_state)
                     
+                    # Add invoice state for debugging
+                    state_color = {
+                        'draft': '#6c757d', 'posted': '#28a745', 'cancel': '#dc3545'
+                    }.get(invoice.state, '#6c757d')
+                    
                     html_content += f'''
                     <tr>
                         <td style="padding: 6px; border-bottom: 1px solid #dee2e6; font-size: 12px; font-weight: bold;">{fee_name}</td>
                         <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 12px;">{invoice_date}</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center; font-size: 10px;">
+                            <span style="background-color: {state_color}; color: white; padding: 1px 4px; border-radius: 6px;">
+                                {invoice.state}
+                            </span>
+                        </td>
                         <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: right; font-size: 12px; font-weight: bold;">{invoice.amount_total:.0f} EGP</td>
                         <td style="padding: 6px; border-bottom: 1px solid #dee2e6; text-align: center;">
                             <span style="background-color: {status_color}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: bold;">
@@ -193,13 +203,13 @@ class ResPartner(models.Model):
         return html_content
 
     def _build_student_fee_html(self):
-        """CORRECTED: Build fee HTML for students showing ONLY their fees - CLONED logic"""
-        # Get student's invoices
+        """FIXED: Build fee HTML for students - remove extra filtering to match count"""
+        # FIXED: Remove the state == 'posted' filter to match count logic
         student_invoices = self.invoice_ids.filtered(
-            lambda inv: inv.move_type in ['out_invoice', 'out_refund'] and inv.state == 'posted'
+            lambda inv: inv.move_type in ['out_invoice', 'out_refund']
         )
         
-        # CLONED LOGIC: Get ONLY fee invoices using EXACT same filter as student admission
+        # Use EXACT same filter as count: just membership_fee_name
         fee_invoices = student_invoices.filtered(lambda inv: inv.membership_fee_name)
         
         if not fee_invoices:
@@ -232,6 +242,7 @@ class ResPartner(models.Model):
                         <th style="padding: 8px; text-align: left;">#</th>
                         <th style="padding: 8px; text-align: left;">Fee Name</th>
                         <th style="padding: 8px; text-align: center;">Date</th>
+                        <th style="padding: 8px; text-align: center;">State</th>
                         <th style="padding: 8px; text-align: right;">Amount</th>
                         <th style="padding: 8px; text-align: center;">Status</th>
                     </tr>
@@ -240,7 +251,6 @@ class ResPartner(models.Model):
         '''
         
         for index, invoice in enumerate(fee_invoices, 1):
-            # Use membership_fee_name for fee invoices (CLONED logic)
             fee_name = invoice.membership_fee_name or 'Unknown Fee'
             invoice_date = invoice.invoice_date.strftime('%d/%m/%Y') if invoice.invoice_date else 'N/A'
             
@@ -254,6 +264,11 @@ class ResPartner(models.Model):
                 'not_paid': 'Unpaid', 'reversed': 'Reversed'
             }.get(invoice.payment_state, invoice.payment_state)
             
+            # Add invoice state for debugging
+            state_color = {
+                'draft': '#6c757d', 'posted': '#28a745', 'cancel': '#dc3545'
+            }.get(invoice.state, '#6c757d')
+            
             row_bg = '#f8f9fa' if index % 2 == 0 else 'white'
             
             html_content += f'''
@@ -261,6 +276,11 @@ class ResPartner(models.Model):
                 <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">{index}</td>
                 <td style="padding: 8px; border-bottom: 1px solid #dee2e6; font-weight: bold;">{fee_name}</td>
                 <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">{invoice_date}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">
+                    <span style="background-color: {state_color}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">
+                        {invoice.state}
+                    </span>
+                </td>
                 <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: right; font-weight: bold;">{invoice.amount_total:.0f} EGP</td>
                 <td style="padding: 8px; border-bottom: 1px solid #dee2e6; text-align: center;">
                     <span style="background-color: {status_color}; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;">
