@@ -18,6 +18,8 @@
                 <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
                 <field name="payment_date" string="Payment Date"/>
                 <field name="invoice_count" string="Invoices"/>
+                <field name="fees_count" string="Fees"/>
+
             </tree>
         </field>
     </record>
@@ -103,6 +105,11 @@
                                     <i class="fa fa-file-text-o"/>
                                     <strong>Invoices:</strong>
                                     <field name="invoice_count" style="font-size: 16px; font-weight: bold;"/>
+                                </div>
+                                <div invisible="fees_count == 0">
+                                    <i class="fa fa-file-text-o"/>
+                                    <strong>Fees:</strong>
+                                    <field name="fees_count" style="font-size: 16px; font-weight: bold;"/>
                                 </div>
                             </div>
                         </div>

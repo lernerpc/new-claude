@@ -5,6 +5,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 import logging
 from collections import defaultdict
+from datetime import timedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ class StudentAdmission(models.Model):
 
     invoice_ids = fields.One2many('account.move', compute='_compute_invoice_ids', string='Invoices', search=True)
     invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count')
+    fees_count = fields.Integer(compute='_compute_invoice_ids', string='Fees Count', help="Number of invoices that are membership fees")
 
     membership_number = fields.Char('رقم الاستمارة')
 
@@ -189,18 +191,55 @@ class StudentAdmission(models.Model):
 
     @api.depends('student_id', 'name')
     def _compute_invoice_ids(self):
-        """Compute related invoices for the student"""
+        """Compute related invoices for the student - Enhanced version with auto-detection"""
         for record in self:
-            # Search by invoice_origin (this is how it was working before)
             invoices = self.env['account.move']
             if record.name:
-                invoices = self.env['account.move'].search([
+                # Method 1: Search by invoice_origin (existing invoices)
+                invoices_by_origin = self.env['account.move'].search([
                     ('invoice_origin', '=', record.name),
                     ('move_type', 'in', ['out_invoice', 'out_refund'])
                 ])
+                
+                # Method 2: Search by student_admission_id (new field from account_move extension)
+                invoices_by_admission = self.env['account.move']
+                if record.id:  # Check if record has an ID (is saved)
+                    invoices_by_admission = self.env['account.move'].search([
+                        ('student_admission_id', '=', record.id),
+                        ('move_type', 'in', ['out_invoice', 'out_refund'])
+                    ])
+                
+                # Method 3: Auto-link unlinked invoices for this student (fallback)
+                invoices_by_partner = self.env['account.move']
+                if record.student_id and record.id:
+                    # Find invoices for this student that aren't linked to any admission
+                    unlinked_invoices = self.env['account.move'].search([
+                        ('partner_id', '=', record.student_id.id),
+                        ('move_type', 'in', ['out_invoice', 'out_refund']),
+                        ('invoice_origin', '=', False),
+                        ('student_admission_id', '=', False)
+                    ])
+                    
+                    # Auto-link them to this admission if it's the most recent for this student
+                    if unlinked_invoices:
+                        most_recent_admission = self.env['student.admission'].search([
+                            ('student_id', '=', record.student_id.id)
+                        ], order='id desc', limit=1)
+                        
+                        if most_recent_admission and most_recent_admission.id == record.id:
+                            # This is the most recent admission, auto-link the unlinked invoices
+                            unlinked_invoices.write({'student_admission_id': record.id})
+                            invoices_by_partner = unlinked_invoices
+                
+                # Combine all methods and remove duplicates
+                invoices = (invoices_by_origin | invoices_by_admission | invoices_by_partner)
 
             record.invoice_ids = invoices
             record.invoice_count = len(invoices)
+            
+            # Count only invoices that have membership_fee_name set (fee invoices)
+            fee_invoices = invoices.filtered(lambda inv: inv.membership_fee_name)
+            record.fees_count = len(fee_invoices)
 
     @api.depends('invoice_ids.payment_state', 'invoice_ids.invoice_date', 'invoice_ids.line_ids.reconciled')
     def _compute_payment_state(self):
@@ -942,6 +981,12 @@ class StudentAdmission(models.Model):
             if academic_product and academic_product in self.activity_ids:
                 self.activity_ids = [(3, academic_product.id)]
 
+    @api.onchange('activity_ids')
+    def _onchange_activity_ids(self):
+        """Reset schedule selections when activities change"""
+        if self.schedule_selection_ids:
+            self.schedule_selection_ids = [(5, 0, 0)]  # Clear all schedule selections
+
     def get_total_price(self):
         """Calculate total price based on member type and registration date"""
         total = 0
@@ -987,13 +1032,6 @@ class StudentAdmission(models.Model):
 
     def get_schedules_for_sport(self, sport_id):
         return self.env['sport.schedule'].search([('sport_id', '=', sport_id)])
-    
-
-    @api.onchange('activity_ids')
-    def _onchange_activity_ids(self):
-        """Reset schedule selections when activities change"""
-        if self.schedule_selection_ids:
-            self.schedule_selection_ids = [(5, 0, 0)]  # Clear all schedule selections
 
     def _compute_previous_activities_schedule_ids(self):
         for rec in self:
