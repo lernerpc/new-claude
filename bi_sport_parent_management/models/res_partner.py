@@ -62,44 +62,45 @@ class ResPartner(models.Model):
 
 
 
-# Add ALL these methods to your res.partner class
+# Final clean versions - replace your debug methods with these
 
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_fees_count(self):
-        """DEBUG: Compute fees count for partners"""
+        """Compute fees count for partners - final version"""
         for record in self:
             try:
                 if record.is_parent:
-                    # For parents: get their own + all children's invoices
-                    all_invoices = record._get_all_family_invoices(record)
-                    _logger.info(f"DEBUG PARENT COUNT: Found {len(all_invoices)} total family invoices")
+                    # For parents: process each child individually
+                    total_fee_count = 0
+                    
+                    for child in record.child_ids:
+                        # Get child's invoices
+                        child_invoices = child.invoice_ids.filtered(
+                            lambda inv: inv.move_type in ['out_invoice', 'out_refund']
+                        )
+                        
+                        # Count fee invoices for this child
+                        child_fee_invoices = child_invoices.filtered(lambda inv: inv.membership_fee_name)
+                        total_fee_count += len(child_fee_invoices)
+                    
+                    record.fees_count = total_fee_count
+                    
                 else:
                     # For students/regular partners: only their own invoices
                     all_invoices = record.invoice_ids.filtered(
                         lambda inv: inv.move_type in ['out_invoice', 'out_refund']
                     )
-                    _logger.info(f"DEBUG STUDENT COUNT: Found {len(all_invoices)} total invoices")
+                    
+                    # Count only invoices that have membership_fee_name set
+                    fee_invoices = all_invoices.filtered(lambda inv: inv.membership_fee_name)
+                    record.fees_count = len(fee_invoices)
                 
-                # Debug: log all invoices
-                for inv in all_invoices:
-                    _logger.info(f"DEBUG COUNT: Invoice {inv.name} - membership_fee_name: '{inv.membership_fee_name}' - state: {inv.state}")
-                
-                # CLONED LOGIC: Count only invoices that have membership_fee_name set
-                fee_invoices = all_invoices.filtered(lambda inv: inv.membership_fee_name)
-                _logger.info(f"DEBUG COUNT: Found {len(fee_invoices)} fee invoices")
-                
-                for fee_inv in fee_invoices:
-                    _logger.info(f"DEBUG COUNT FEE: {fee_inv.name} - fee_name: '{fee_inv.membership_fee_name}'")
-                
-                record.fees_count = len(fee_invoices)
-                
-            except Exception as e:
-                _logger.error(f"DEBUG COUNT ERROR: {str(e)}")
+            except Exception:
                 record.fees_count = 0
 
     @api.depends('invoice_ids', 'child_ids.invoice_ids')
     def _compute_fee_details(self):
-        """DEBUG: Fee details for partners"""
+        """Compute fee details for partners"""
         for record in self:
             try:
                 if record.is_parent:
@@ -113,13 +114,10 @@ class ResPartner(models.Model):
                 
                 record.fee_details = html_content
             except Exception as e:
-                _logger.error(f"DEBUG FEE DETAILS ERROR: {str(e)}")
                 record.fee_details = f'<p style="color: #dc3545;">Error: {str(e)}</p>'
 
     def _build_parent_fee_html(self):
-        """DEBUG: Build fee HTML for parents"""
-        _logger.info("DEBUG PARENT DISPLAY: Starting _build_parent_fee_html")
-        
+        """Build fee HTML for parents showing children's fees"""
         html_content = '''
         <div style="margin: 10px 0;">
             <h4 style="color: #875A7B; margin-bottom: 15px;">👨‍👩‍👧‍👦 Children's Fees</h4>
@@ -128,25 +126,14 @@ class ResPartner(models.Model):
         if not self.child_ids:
             return html_content + '<p style="text-align: center; color: #6c757d;">No children found</p></div>'
         
-        total_fee_invoices_displayed = 0
-        
         for child in self.child_ids:
-            _logger.info(f"DEBUG PARENT DISPLAY: Processing child {child.name}")
-            
             # Get child's invoices
             child_invoices = child.invoice_ids.filtered(
                 lambda inv: inv.move_type in ['out_invoice', 'out_refund']
             )
-            _logger.info(f"DEBUG PARENT DISPLAY: Child {child.name} has {len(child_invoices)} total invoices")
             
-            # Debug: log all child invoices
-            for inv in child_invoices:
-                _logger.info(f"DEBUG PARENT DISPLAY: Child invoice {inv.name} - membership_fee_name: '{inv.membership_fee_name}' - state: {inv.state}")
-            
-            # Use EXACT same filter as count
+            # Get fee invoices for this child
             fee_invoices = child_invoices.filtered(lambda inv: inv.membership_fee_name)
-            _logger.info(f"DEBUG PARENT DISPLAY: Child {child.name} has {len(fee_invoices)} fee invoices")
-            total_fee_invoices_displayed += len(fee_invoices)
             
             if fee_invoices:
                 paid_count = len(fee_invoices.filtered(lambda inv: inv.payment_state == 'paid'))
@@ -220,46 +207,26 @@ class ResPartner(models.Model):
             else:
                 # Child has invoices but no fees
                 total_invoices = len(child_invoices)
-                html_content += f'''
-                <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
-                    <strong>{child.name}</strong> - No membership fees found
-                    <br><small style="color: #6c757d;">(Has {total_invoices} total invoices, but none are marked as fees)</small>
-                </div>
-                '''
-        
-        # Add debug summary
-        html_content += f'''
-        <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px; margin-top: 15px;">
-            <strong style="color: #721c24;">DEBUG SUMMARY:</strong><br>
-            <small style="color: #721c24;">Count shows: {self.fees_count} fees | Display shows: {total_fee_invoices_displayed} fees</small>
-        </div>
-        '''
+                if total_invoices > 0:
+                    html_content += f'''
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
+                        <strong>{child.name}</strong> - No membership fees found
+                        <br><small style="color: #6c757d;">(Has {total_invoices} total invoices, but none are marked as fees)</small>
+                    </div>
+                    '''
         
         html_content += '</div>'
-        
-        _logger.info(f"DEBUG PARENT DISPLAY: Total fee invoices displayed: {total_fee_invoices_displayed}")
         return html_content
 
     def _build_student_fee_html(self):
-        """DEBUG: Build fee HTML for students"""
-        _logger.info("DEBUG STUDENT DISPLAY: Starting _build_student_fee_html")
-        
+        """Build fee HTML for students showing their own fees"""
         # Get student's invoices
         student_invoices = self.invoice_ids.filtered(
             lambda inv: inv.move_type in ['out_invoice', 'out_refund']
         )
-        _logger.info(f"DEBUG STUDENT DISPLAY: Found {len(student_invoices)} total student invoices")
         
-        # Debug: log all invoices
-        for inv in student_invoices:
-            _logger.info(f"DEBUG STUDENT DISPLAY: Invoice {inv.name} - membership_fee_name: '{inv.membership_fee_name}' - state: {inv.state}")
-        
-        # Use EXACT same filter as count
+        # Get fee invoices
         fee_invoices = student_invoices.filtered(lambda inv: inv.membership_fee_name)
-        _logger.info(f"DEBUG STUDENT DISPLAY: Found {len(fee_invoices)} fee invoices")
-        
-        for fee_inv in fee_invoices:
-            _logger.info(f"DEBUG STUDENT DISPLAY FEE: {fee_inv.name} - fee_name: '{fee_inv.membership_fee_name}'")
         
         if not fee_invoices:
             total_invoices = len(student_invoices)
@@ -283,7 +250,6 @@ class ResPartner(models.Model):
             <div style="background: #e9ecef; padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
                 <strong>{paid_count}/{len(fee_invoices)} Paid • {total_amount:.0f} EGP Total</strong>
                 <br><small style="color: #6c757d;">Showing {len(fee_invoices)} fees out of {total_invoices} total invoices</small>
-                <br><small style="color: #dc3545;">DEBUG: Count shows {self.fees_count} but display shows {len(fee_invoices)}</small>
             </div>
             
             <table style="width: 100%; border-collapse: collapse; background: white; border: 1px solid #dee2e6; border-radius: 6px; overflow: hidden;">
@@ -291,7 +257,7 @@ class ResPartner(models.Model):
                     <tr>
                         <th style="padding: 8px; text-align: left;">#</th>
                         <th style="padding: 8px; text-align: left;">Fee Name</th>
-                        <th style="padding: 8px; text-align: center;">Invoice Name</th>
+                        <th style="padding: 8px; text-align: center;">Invoice</th>
                         <th style="padding: 8px; text-align: center;">Date</th>
                         <th style="padding: 8px; text-align: center;">State</th>
                         <th style="padding: 8px; text-align: right;">Amount</th>
