@@ -83,6 +83,19 @@ class StudentAdmission(models.Model):
     invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count')
     fees_count = fields.Integer(compute='_compute_invoice_ids', string='Fees Count', help="Number of invoices that are membership fees")
 
+    
+    # Add these fields after the fees_count field in your StudentAdmission class
+    
+    # Computed field to show fee details
+    fee_details = fields.Html('Fee Details', compute='_compute_fee_details', store=False, 
+                             help="Details of membership fees assigned to this student")
+    
+    # One2many field to show fee invoices in a tree view
+    fee_invoice_ids = fields.One2many('account.move', compute='_compute_fee_invoice_ids', 
+                                     string='Fee Invoices', store=False,
+                                     help="Invoices that are membership fees")
+
+
     membership_number = fields.Char('رقم الاستمارة')
 
     schedule_selection_ids = fields.One2many('admission.schedule.selection', 'admission_id', string='Schedule Selections')
@@ -1048,6 +1061,110 @@ class StudentAdmission(models.Model):
                         ])
                         result[activity.name].extend([s.display_name for s in schedules])
             rec.previous_activities_schedule_ids = dict(result)
+
+
+ 
+    @api.depends('invoice_ids')
+    def _compute_fee_details(self):
+        """Compute fee details to display in the form"""
+        for record in self:
+            if not record.invoice_ids:
+                record.fee_details = '<p>No fees assigned</p>'
+                continue
+            
+            # Get fee invoices - safely check if membership_fee_name exists
+            fee_invoices = record.invoice_ids.filtered(
+                lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
+            )
+            
+            if not fee_invoices:
+                record.fee_details = '<p>No membership fees found</p>'
+                continue
+            
+            # Build simple HTML table
+            html_content = '''
+            <div style="margin: 10px 0;">
+                <h4 style="color: #875A7B; margin-bottom: 15px;">💳 Membership Fees</h4>
+                <table class="table table-striped" style="width: 100%; border-collapse: collapse;">
+                    <thead style="background-color: #875A7B; color: white;">
+                        <tr>
+                            <th style="padding: 8px; border: 1px solid #ddd;">#</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Fee Name</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Start Date</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">End Date</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Amount</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Status</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Invoice</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            '''
+            
+            # Add fee rows
+            for index, invoice in enumerate(fee_invoices, 1):
+                # Safely get membership_fee_name
+                fee_name = getattr(invoice, 'membership_fee_name', 'Unknown Fee')
+                
+                # Try to find the actual membership fee record
+                fee_record = None
+                if fee_name and fee_name != 'Unknown Fee':
+                    fee_record = self.env['sport.membership.fees'].search([
+                        ('name', '=', fee_name)
+                    ], limit=1)
+                
+                start_date = fee_record.start_date.strftime('%Y-%m-%d') if fee_record and fee_record.start_date else 'N/A'
+                end_date = fee_record.end_date.strftime('%Y-%m-%d') if fee_record and fee_record.end_date else 'N/A'
+                
+                # Payment status styling
+                status_color = {
+                    'paid': '#28a745',
+                    'partial': '#ffc107', 
+                    'in_payment': '#17a2b8',
+                    'not_paid': '#dc3545',
+                    'reversed': '#6c757d'
+                }.get(invoice.payment_state, '#6c757d')
+                
+                status_text = {
+                    'paid': 'Paid',
+                    'partial': 'Partial',
+                    'in_payment': 'In Payment', 
+                    'not_paid': 'Not Paid',
+                    'reversed': 'Reversed'
+                }.get(invoice.payment_state, invoice.payment_state)
+                
+                html_content += f'''
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{index}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">{fee_name}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{start_date}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{end_date}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: right; font-weight: bold;">{invoice.amount_total:.2f} EGP</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                        <span style="background-color: {status_color}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                            {status_text}
+                        </span>
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #ddd; color: #875A7B; font-weight: bold;">{invoice.name or 'Draft'}</td>
+                </tr>
+                '''
+            
+            html_content += '''
+                    </tbody>
+                </table>
+            </div>
+            '''
+            
+            record.fee_details = html_content
+
+    @api.depends('invoice_ids')
+    def _compute_fee_invoice_ids(self):
+        """Compute fee invoices for display in One2many field"""
+        for record in self:
+            # Get only invoices that have membership_fee_name set (fee invoices)
+            fee_invoices = record.invoice_ids.filtered(
+                lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
+            )
+            record.fee_invoice_ids = fee_invoices.ids
 
 class AdmissionScheduleSelection(models.Model):
     _name = 'admission.schedule.selection'

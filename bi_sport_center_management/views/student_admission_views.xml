@@ -19,7 +19,6 @@
                 <field name="payment_date" string="Payment Date"/>
                 <field name="invoice_count" string="Invoices"/>
                 <field name="fees_count" string="Fees"/>
-
             </tree>
         </field>
     </record>
@@ -81,9 +80,6 @@
         </field>
     </record>
 
-
-
-
     <record id="student_admission_view_form" model="ir.ui.view">
         <field name="name">student.admission.view.form</field>
         <field name="model">student.admission</field>
@@ -107,7 +103,7 @@
                                     <field name="invoice_count" style="font-size: 16px; font-weight: bold;"/>
                                 </div>
                                 <div invisible="fees_count == 0">
-                                    <i class="fa fa-file-text-o"/>
+                                    <i class="fa fa-money"/>
                                     <strong>Fees:</strong>
                                     <field name="fees_count" style="font-size: 16px; font-weight: bold;"/>
                                 </div>
@@ -128,11 +124,9 @@
                             <field name='is_invoiced' invisible="1"/>
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text">Invoice</span>
-
                             </div>
                         </button>
                         <button string="Print Registration" type="object" name="action_print_registration" class="oe_highlight"/>
-
                     </div>
                     <div class="oe_title">
                         <label for="name"/>
@@ -192,6 +186,34 @@
                                 </form>
                             </field>
                         </group>
+                    </page>
+
+                    <page string="Fee Details" name="fee_details">
+                        <group>
+                            <group string="Fee Summary">
+                                <field name="invoice_count" string="Total Invoices"/>
+                                <field name="fees_count" string="Membership Fees"/>
+                                <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
+                                <field name="payment_date" string="Last Payment Date"/>
+                            </group>
+                        </group>
+
+                        <!-- Fee Details HTML Display -->
+                        <separator string="Membership Fees Details"/>
+                        <field name="fee_details" widget="html" readonly="1" nolabel="1"/>
+
+                        <!-- Fixed: Fee Invoices in Tree View - Removed membership_fee_name field -->
+                        <separator string="Fee Invoices"/>
+                        <field name="fee_invoice_ids" readonly="1" nolabel="1">
+                            <tree string="Fee Invoices" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'">
+                                <field name="name" string="Invoice"/>
+                                <field name="ref" string="Reference"/>
+                                <field name="invoice_date" string="Date"/>
+                                <field name="amount_total" string="Amount"/>
+                                <field name="currency_id" groups="base.group_multi_currency"/>
+                                <field name="payment_state" widget="badge" string="Status"/>
+                            </tree>
+                        </field>
                     </page>
                 </notebook>
             </form>
