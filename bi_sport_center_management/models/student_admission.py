@@ -83,9 +83,6 @@ class StudentAdmission(models.Model):
     invoice_count = fields.Integer(compute='_compute_invoice_ids', string='Invoice Count')
     fees_count = fields.Integer(compute='_compute_invoice_ids', string='Fees Count', help="Number of invoices that are membership fees")
 
-    
-    # Add these fields after the fees_count field in your StudentAdmission class
-    
     # Computed field to show fee details
     fee_details = fields.Html('Fee Details', compute='_compute_fee_details', store=False, 
                              help="Details of membership fees assigned to this student")
@@ -94,7 +91,6 @@ class StudentAdmission(models.Model):
     fee_invoice_ids = fields.One2many('account.move', compute='_compute_fee_invoice_ids', 
                                      string='Fee Invoices', store=False,
                                      help="Invoices that are membership fees")
-
 
     membership_number = fields.Char('رقم الاستمارة')
 
@@ -683,7 +679,7 @@ class StudentAdmission(models.Model):
             student_vals['image_1920'] = self.student_photo
 
         # Update the student record
-        self.student_id.write(student_vals)
+        self.student_id.update(student_vals)
 
         # Update the admission record with parent reference
         self.write({'parent_id': parent_partner.id})
@@ -781,7 +777,7 @@ class StudentAdmission(models.Model):
             
             # Only update if we found a valid coach field
             if coach_vals:
-                self.student_id.write(coach_vals)
+                self.student_id.update(coach_vals)
                 _logger.info("✅ Trainer/Coach synced to student record: %s", list(coach_vals.keys())[0])
             else:
                 _logger.info("ℹ️ No coach field found on student record - skipping coach sync")
@@ -792,7 +788,7 @@ class StudentAdmission(models.Model):
         if hasattr(self, 'membership_number') and self.membership_number:
             # Check if student record has membership_number field
             if hasattr(self.student_id, 'membership_number'):
-                self.student_id.write({
+                self.student_id.update({
                     'membership_number': self.membership_number
                 })
                 _logger.info("✅ Membership number synced to student record")
@@ -1046,24 +1042,28 @@ class StudentAdmission(models.Model):
     def get_schedules_for_sport(self, sport_id):
         return self.env['sport.schedule'].search([('sport_id', '=', sport_id)])
 
-    def _compute_previous_activities_schedule_ids(self):
-        for rec in self:
-            result = defaultdict(list)
-            if rec.student_id:
-                admissions = self.env['student.admission'].search([
-                    ('student_id', '=', rec.student_id.id),
-                    ('id', '!=', rec.id)
-                ])
-                for admission in admissions:
-                    for activity in admission.activity_ids:
-                        schedules = self.env['sport.schedule'].search([
-                            ('sport_id', '=', activity.id)
-                        ])
-                        result[activity.name].extend([s.display_name for s in schedules])
-            rec.previous_activities_schedule_ids = dict(result)
+    @api.depends('invoice_ids')
+    def _compute_fee_invoice_ids(self):
+        """Compute fee invoices for display in One2many field"""
+        for record in self:
+            try:
+                # Ensure invoice_ids is computed and available
+                if not record.invoice_ids:
+                    record.fee_invoice_ids = [(5, 0, 0)]  # Clear the field if no invoices
+                    continue
 
+                # Get only invoices that have membership_fee_name set (fee invoices)
+                fee_invoices = record.invoice_ids.filtered(
+                    lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
+                )
+                
+                # Assign the list of invoice IDs or an empty list if none found
+                record.fee_invoice_ids = [(6, 0, fee_invoices.ids)] if fee_invoices else [(5, 0, 0)]
+                
+            except Exception as e:
+                _logger.error("Error computing fee_invoice_ids for admission %s: %s", record.id, str(e))
+                record.fee_invoice_ids = [(5, 0, 0)]  # Clear the field in case of error
 
- 
     @api.depends('invoice_ids')
     def _compute_fee_details(self):
         """Compute fee details to display in the form"""
@@ -1156,15 +1156,22 @@ class StudentAdmission(models.Model):
             
             record.fee_details = html_content
 
-    @api.depends('invoice_ids')
-    def _compute_fee_invoice_ids(self):
-        """Compute fee invoices for display in One2many field"""
-        for record in self:
-            # Get only invoices that have membership_fee_name set (fee invoices)
-            fee_invoices = record.invoice_ids.filtered(
-                lambda inv: hasattr(inv, 'membership_fee_name') and getattr(inv, 'membership_fee_name', False)
-            )
-            record.fee_invoice_ids = fee_invoices.ids
+    @api.depends('student_id')
+    def _compute_previous_activities_schedule_ids(self):
+        for rec in self:
+            result = defaultdict(list)
+            if rec.student_id:
+                admissions = self.env['student.admission'].search([
+                    ('student_id', '=', rec.student_id.id),
+                    ('id', '!=', rec.id)
+                ])
+                for admission in admissions:
+                    for activity in admission.activity_ids:
+                        schedules = self.env['sport.schedule'].search([
+                            ('sport_id', '=', activity.id)
+                        ])
+                        result[activity.name].extend([s.display_name for s in schedules])
+            rec.previous_activities_schedule_ids = dict(result)
 
 class AdmissionScheduleSelection(models.Model):
     _name = 'admission.schedule.selection'
