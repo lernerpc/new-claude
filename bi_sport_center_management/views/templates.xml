@@ -1386,6 +1386,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const priceContainer = document.getElementById('price-calculation-container');
         if (!priceContainer) return;
         
+        console.log('updatePriceCalculation called - memberType:', memberType, 'activities:', selectedActivities.length, 'pricelist:', selectedPricelist);
+        
         // For academic members, show only basic fees
         if (memberType === 'academic') {
             priceContainer.style.display = 'block';
@@ -1394,12 +1396,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!priceDetails || !totalElement) return;
             
-            let totalPrice = ID_CARD_FEE; // Only ID card fee for academic
+            let totalPrice = ID_CARD_FEE;
             let priceHTML = '';
 
             priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
 
-            // Add guardian fee if selected
             if (isGuardian) {
                 totalPrice += GUARDIAN_FEE;
                 priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
@@ -1410,122 +1411,91 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // For regular members - require both activities and pricelist to show calculation
-        if (selectedActivities.length === 0 || !selectedPricelist) {
+        // For regular members - show calculation even with just fixed fees
+        if (selectedActivities.length === 0 && !isGuardian) {
             priceContainer.style.display = 'none';
             return;
         }
 
-        // First check if registration is late
-        fetch('/check_late_registration', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'call',
-                params: {}
+        // Show price container for regular members
+        priceContainer.style.display = 'block';
+        const priceDetails = document.getElementById('price-details');
+        const totalElement = document.getElementById('total-price');
+        
+        if (!priceDetails || !totalElement) return;
+        
+        // Start with fixed fees
+        let totalPrice = ID_CARD_FEE + FORM_FEE;
+        let priceHTML = '';
+
+        priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
+        priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
+
+        if (isGuardian) {
+            totalPrice += GUARDIAN_FEE;
+            priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
+        }
+
+        // If no activities selected, just show fixed fees
+        if (selectedActivities.length === 0 || !selectedPricelist) {
+            priceDetails.innerHTML = priceHTML;
+            totalElement.textContent = totalPrice + ' جنيه';
+            return;
+        }
+
+        console.log('Fetching activity prices for:', selectedActivities);
+
+        // Calculate activity prices
+        Promise.all(selectedActivities.map(function(activity) {
+            console.log('Fetching price for activity:', activity.id, 'with pricelist:', selectedPricelist);
+            return fetch('/get_activity_price', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'call',
+                    params: {
+                        activity_id: parseInt(activity.id),
+                        pricelist_id: parseInt(selectedPricelist)
+                    }
+                })
             })
-        })
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            const isLateRegistration = data.result ? data.result.is_late_registration : false;
-            const lateMessage = data.result ? data.result.message : '';
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                console.log('Price response for', activity.name, ':', data);
+                const activityPrice = data.result ? data.result.price : 0;
+                return {
+                    name: activity.name,
+                    price: activityPrice || 0
+                };
+            })
+            .catch(function(error) {
+                console.error('Error fetching price for', activity.name, ':', error);
+                return {
+                    name: activity.name,
+                    price: 0
+                };
+            });
+        })).then(function(activityPrices) {
+            console.log('All activity prices received:', activityPrices);
             
-            // Show late registration message if applicable
-            const lateMessageElement = document.getElementById('late-registration-message');
-            if (lateMessageElement) {
-                if (isLateRegistration) {
-                    lateMessageElement.textContent = lateMessage;
-                    lateMessageElement.style.display = 'block';
-                    lateMessageElement.className = 'alert alert-warning mt-2';
-                } else {
-                    lateMessageElement.style.display = 'none';
-                }
-            }
+            // Add activity prices to the display
+            activityPrices.forEach(function(item) {
+                totalPrice += item.price;
+                priceHTML += '<div class="price-row"><span class="price-item">' + item.name + '</span><span class="price-value">' + item.price + ' جنيه</span></div>';
+            });
             
-            // Show price calculation for regular members with activities
-            priceContainer.style.display = 'block';
-            const priceDetails = document.getElementById('price-details');
-            const totalElement = document.getElementById('total-price');
-            
-            if (!priceDetails || !totalElement) return;
-            
-            let totalPrice = ID_CARD_FEE + FORM_FEE; // Base fees for regular
-            let priceHTML = '';
-
-            // Add fixed fees
-            priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
-            priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
-
-            // Add guardian fee if selected
-            if (isGuardian) {
-                totalPrice += GUARDIAN_FEE;
-                priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
-            }
-
-            // Calculate activity prices - only if NOT late registration
-            if (!isLateRegistration && selectedActivities.length > 0) {
-                console.log('Calculating prices for activities:', selectedActivities);
-                console.log('Using pricelist:', selectedPricelist);
-                
-                Promise.all(selectedActivities.map(function(activity) {
-                    return fetch('/get_activity_price', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            jsonrpc: '2.0',
-                            method: 'call',
-                            params: {
-                                activity_id: activity.id,
-                                pricelist_id: selectedPricelist
-                            }
-                        })
-                    })
-                    .then(function(response) {
-                        return response.json();
-                    })
-                    .then(function(data) {
-                        console.log('Price response for activity', activity.name, ':', data);
-                        const activityPrice = data.result ? data.result.price : 0;
-                        return {
-                            name: activity.name,
-                            price: activityPrice || 0
-                        };
-                    })
-                    .catch(function(error) {
-                        console.error('Error fetching activity price for', activity.name, ':', error);
-                        return {
-                            name: activity.name,
-                            price: 0
-                        };
-                    });
-                })).then(function(activityPrices) {
-                    console.log('All activity prices received:', activityPrices);
-                    
-                    activityPrices.forEach(function(item) {
-                        totalPrice += item.price;
-                        priceHTML += '<div class="price-row"><span class="price-item">' + item.name + '</span><span class="price-value">' + item.price + ' جنيه</span></div>';
-                    });
-                    
-                    priceDetails.innerHTML = priceHTML;
-                    totalElement.textContent = totalPrice + ' جنيه';
-                });
-            } else {
-                // Late registration or no activities - show only fixed fees
-                priceDetails.innerHTML = priceHTML;
-                totalElement.textContent = totalPrice + ' جنيه';
-            }
-        })
-        .catch(function(error) {
-            console.error('Error checking late registration:', error);
-            // Fallback to normal calculation if error
-            updatePriceCalculationFallback();
+            priceDetails.innerHTML = priceHTML;
+            totalElement.textContent = totalPrice + ' جنيه';
+        }).catch(function(error) {
+            console.error('Error in price calculation:', error);
+            // Show fixed fees only if there's an error
+            priceDetails.innerHTML = priceHTML;
+            totalElement.textContent = totalPrice + ' جنيه';
         });
     }
 
