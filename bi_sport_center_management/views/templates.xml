@@ -1381,116 +1381,152 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Price calculation function
+    // RESTORED ORIGINAL Price calculation function
     function updatePriceCalculation() {
         const priceContainer = document.getElementById('price-calculation-container');
         if (!priceContainer) return;
-        const today = new Date();
-
-        // Fetch all membership fees
-        fetch('/get_membership_fees', {
+        
+        // First check if registration is late
+        fetch('/check_late_registration', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: {}})
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'call',
+                params: {}
+            })
         })
-        .then(function(response) { return response.json(); })
+        .then(function(response) {
+            return response.json();
+        })
         .then(function(data) {
-            const fees = data.result ? data.result.fees : [];
-            // Filter valid fees (not expired)
-            const validFees = fees.filter(function(fee) {
-                return fee.end_date && new Date(today.toISOString().slice(0,10)) <= new Date(fee.end_date);
-            });
-
-            let totalPrice = 0;
-            let priceHTML = '';
-            let activityPromises = [];
-            let firstFee = true;
-
-            // Helper to add fixed products
-            function addFixedProducts(fee) {
-                if (fee.fixed_products && fee.fixed_products.length > 0) {
-                    fee.fixed_products.forEach(function(product) {
-                        totalPrice += product.price;
-                        priceHTML += '<div class="price-row"><span class="price-item">' + product.name + ' - ' + fee.name + '</span><span class="price-value">' + product.price + ' جنيه</span></div>';
-                    });
-                }
-            }
-
-            // Add guardian fee if selected (once per fee)
-            function addGuardianFee(fee) {
-                if (isGuardian) {
-                    totalPrice += GUARDIAN_FEE;
-                    priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق - ' + fee.name + '</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
-                }
-            }
-
-            // Add base fees (ID card, form) for the first valid fee only
-            function addBaseFees(fee) {
-                if (memberType === 'academic') {
-                    totalPrice += ID_CARD_FEE;
-                    priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة - ' + fee.name + '</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
+            const isLateRegistration = data.result ? data.result.is_late_registration : false;
+            const lateMessage = data.result ? data.result.message : '';
+            
+            // Show late registration message if applicable
+            const lateMessageElement = document.getElementById('late-registration-message');
+            if (lateMessageElement) {
+                if (isLateRegistration) {
+                    lateMessageElement.textContent = lateMessage;
+                    lateMessageElement.style.display = 'block';
+                    lateMessageElement.className = 'alert alert-warning mt-2';
                 } else {
-                    totalPrice += ID_CARD_FEE;
-                    totalPrice += FORM_FEE;
-                    priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة - ' + fee.name + '</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
-                    priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة - ' + fee.name + '</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
+                    lateMessageElement.style.display = 'none';
                 }
             }
-
-            validFees.forEach(function(fee, idx) {
-                if (firstFee) {
-                    addBaseFees(fee);
-                    addGuardianFee(fee);
-                    addFixedProducts(fee);
-                }
-                // Add activity fees for all valid fees
-                if (memberType === 'regular' && selectedActivities.length > 0 && selectedPricelist) {
-                    activityPromises = activityPromises.concat(selectedActivities.map(function(activity) {
-                        return fetch('/get_activity_price', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                jsonrpc: '2.0',
-                                method: 'call',
-                                params: {
-                                    activity_id: activity.id,
-                                    pricelist_id: selectedPricelist
-                                }
-                            })
-                        })
-                        .then(function(response) { return response.json(); })
-                        .then(function(data) {
-                            const activityPrice = data.result ? data.result.price : 0;
-                            totalPrice += activityPrice;
-                            priceHTML += '<div class="price-row"><span class="price-item">' + activity.name + ' - ' + fee.name + '</span><span class="price-value">' + activityPrice + ' جنيه</span></div>';
-                        })
-                        .catch(function(error) {
-                            console.error('Error fetching activity price:', error);
-                        });
-                    }));
-                }
-                firstFee = false;
-            });
-
-            Promise.all(activityPromises).then(function() {
+            
+            // For academic members or no activities, always show fixed fees only
+            if (memberType === 'academic' || selectedActivities.length === 0) {
+                priceContainer.style.display = 'block';
                 const priceDetails = document.getElementById('price-details');
                 const totalElement = document.getElementById('total-price');
-                if (priceDetails && totalElement) {
+                
+                if (!priceDetails || !totalElement) return;
+                
+                let totalPrice = ID_CARD_FEE; // Only ID card fee for academic
+                let priceHTML = '';
+
+                priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
+
+                // Add form fee only for regular members
+                if (memberType === 'regular') {
+                    totalPrice += FORM_FEE;
+                    priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
+                }
+
+                // Add guardian fee if selected
+                if (isGuardian) {
+                    totalPrice += GUARDIAN_FEE;
+                    priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
+                }
+
+                priceDetails.innerHTML = priceHTML;
+                totalElement.textContent = totalPrice + ' جنيه';
+                return;
+            }
+
+            // Regular member with activities
+            if (selectedActivities.length === 0 || !selectedPricelist) {
+                priceContainer.style.display = 'none';
+                return;
+            }
+
+            priceContainer.style.display = 'block';
+            const priceDetails = document.getElementById('price-details');
+            const totalElement = document.getElementById('total-price');
+            
+            if (!priceDetails || !totalElement) return;
+            
+            let totalPrice = ID_CARD_FEE + FORM_FEE; // Base fees for regular
+            let priceHTML = '';
+
+            // Add ID card fee
+            priceHTML += '<div class="price-row"><span class="price-item">رسوم البطاقة</span><span class="price-value">' + ID_CARD_FEE + ' جنيه</span></div>';
+            priceHTML += '<div class="price-row"><span class="price-item">رسوم الاستمارة</span><span class="price-value">' + FORM_FEE + ' جنيه</span></div>';
+
+            // Add guardian fee if selected
+            if (isGuardian) {
+                totalPrice += GUARDIAN_FEE;
+                priceHTML += '<div class="price-row"><span class="price-item">رسوم المرافق</span><span class="price-value">' + GUARDIAN_FEE + ' جنيه</span></div>';
+            }
+
+            // Only calculate activity prices if NOT late registration
+            if (!isLateRegistration) {
+                // Calculate activity prices - using Promise.all for async operations
+                Promise.all(selectedActivities.map(function(activity) {
+                    return fetch('/get_activity_price', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            method: 'call',
+                            params: {
+                                activity_id: activity.id,
+                                pricelist_id: selectedPricelist
+                            }
+                        })
+                    })
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        const activityPrice = data.result ? data.result.price : 0;
+                        return {
+                            name: activity.name,
+                            price: activityPrice || 0
+                        };
+                    })
+                    .catch(function(error) {
+                        console.error('Error fetching activity price:', error);
+                        return {
+                            name: activity.name,
+                            price: 0
+                        };
+                    });
+                })).then(function(activityPrices) {
+                    activityPrices.forEach(function(item) {
+                        totalPrice += item.price;
+                        priceHTML += '<div class="price-row"><span class="price-item">' + item.name + '</span><span class="price-value">' + item.price + ' جنيه</span></div>';
+                    });
+                    
                     priceDetails.innerHTML = priceHTML;
                     totalElement.textContent = totalPrice + ' جنيه';
-                }
-            });
+                });
+            } else {
+                // Late registration - show only fixed fees
+                priceDetails.innerHTML = priceHTML;
+                totalElement.textContent = totalPrice + ' جنيه';
+            }
+        })
+        .catch(function(error) {
+            console.error('Error checking late registration:', error);
+            // Fallback to normal calculation if error
+            updatePriceCalculationFallback();
         });
-    }
-
-    // Listen to duration field changes
-    const durationInput = document.getElementById('duration');
-    if (durationInput) {
-        durationInput.addEventListener('input', updatePriceCalculation);
     }
 
     // Fallback price calculation function (original logic)
@@ -1675,8 +1711,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
-        const academicMemberRadio = document.getElementById('academic_member');
+    // Academic member type handling
+    const academicMemberRadio = document.getElementById('academic_member');
     const regularMemberRadio = document.getElementById('regular_member');
     const academicSubtypes = document.getElementById('academic_subtypes');
     const hiddenMemberType = document.getElementById('hidden_member_type');
@@ -1742,13 +1778,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize
     toggleAcademicSubtypes();
-
-
-
-
-
-
-
 });
 //]]>
                 </script>
