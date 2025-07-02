@@ -111,6 +111,7 @@
                         </div>
                     </div>
                     <button string="Enroll" name="action_enroll" type="object" class="oe_highlight" invisible="state != 'new'"/>
+                    <button name="action_create_invoice" string="Create Invoice" type="object" invisible="fees_count > 0"/>
                     <button string="Sync Changes" name="action_sync_changes" type="object" class="btn-secondary" help="Sync all changes to parent and student records"/>
                     <!-- <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/> -->
                     <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="1"/>

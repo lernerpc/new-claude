@@ -1173,6 +1173,16 @@ class StudentAdmission(models.Model):
                         result[activity.name].extend([s.display_name for s in schedules])
             rec.previous_activities_schedule_ids = dict(result)
 
+    def action_create_invoice(self):
+       return {
+           'name': 'Create Invoice',
+           'view_mode': 'form',
+           'res_model': 'create.invoice',
+           'type': 'ir.actions.act_window',
+           'context': self._context,
+           'target': 'new',
+       }
+
 class AdmissionScheduleSelection(models.Model):
     _name = 'admission.schedule.selection'
     _description = 'Admission Schedule Selection'
