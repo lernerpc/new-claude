@@ -36,11 +36,17 @@ class StudentRegistration(http.Controller):
             return int(pricelist_value)
         else:
             return False
+        
 
     @http.route('/registration/create', auth='public', website=True, methods=['POST'], csrf=False)
     def registration_create(self, **kw):
         admission = False
         massage = 'عذرًا، بعض القيم مفقودة! الرجاء ملء الحقول أولاً'
+        
+        # Always initialize these with safe fallback values
+        activity_ids_raw = []
+        activity_ids = []
+        pricelist_id = None
         
         # Add logging for debugging
         _logger.info("Received member_type: %s", kw.get('member_type'))
@@ -177,59 +183,50 @@ class StudentRegistration(http.Controller):
                 student_partner = request.env['res.partner'].sudo().create(partner_vals)
 
                 if student_partner:
+                    # Always initialize activity_ids_raw, activity_ids, pricelist_id with safe values
+                    activity_ids_raw = []
+                    activity_ids = []
+                    pricelist_id = None
+                    
                     # Handle activities and pricelist based on member type
                     if member_type == 'academic':
                         # For academic members: automatically assign academic product and default pricelist
-                        
-                        # Find the academic product by name
                         academic_product = request.env['product.product'].sudo().search([
                             ('name', '=', 'أكاديمية'),
                             ('is_sportname', '=', True)
                         ], limit=1)
-                        
                         if not academic_product:
-                            # If academic product doesn't exist, create it
                             academic_product = request.env['product.product'].sudo().create({
                                 'name': 'أكاديمية',
                                 'is_sportname': True,
-                                'list_price': 0.0,  # Set a base price
+                                'list_price': 0.0,
                                 'type': 'service',
                                 'categ_id': request.env.ref('product.product_category_all').id,
                             })
                             _logger.info("Created academic product: %s", academic_product.name)
-                        
-                        # Get the first available pricelist (default pricelist)
                         default_pricelist = request.env['product.pricelist'].sudo().search([
                             ('name', '=', 'academic')
                         ], limit=1)
-                        
                         if not default_pricelist:
-                            # If no pricelist exists, create a default one
                             default_pricelist = request.env['product.pricelist'].sudo().create({
                                 'name': 'academic',
                                 'active': True,
                             })
                             _logger.info("Created default pricelist: %s", default_pricelist.name)
-                        
                         activity_ids = [(6, 0, [academic_product.id])]
                         pricelist_id = default_pricelist.id
-                        
+                        activity_ids_raw = [str(academic_product.id)]
                         _logger.info("Academic member - Product: %s, Pricelist: %s", academic_product.name, default_pricelist.name)
-                        
                     else:
                         # For regular members: must have activities and pricelist from form
-                        activity_ids_raw = request.httprequest.form.getlist('activity_ids[]')
+                        activity_ids_raw = request.httprequest.form.getlist('activity_ids[]') or []
                         activity_ids = [(6, 0, list(map(int, activity_ids_raw)))] if activity_ids_raw else []
                         pricelist_id = self._get_pricelist_id(kw.get('pricelist_id'))
                         academic_subtype = ''  # Clear academic subtype for regular members
-                        
-                        # Validate that regular members have activities
                         if not activity_ids_raw:
                             student_partner.sudo().unlink()
                             massage = 'عذرًا، يجب اختيار نشاط واحد على الأقل للعضوية الرياضية.'
                             return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
-                        
-                        # Validate pricelist for regular members
                         if not pricelist_id:
                             student_partner.sudo().unlink()
                             massage = 'عذرًا، يجب اختيار جهة الانتماء للعضوية الرياضية.'
@@ -301,36 +298,7 @@ class StudentRegistration(http.Controller):
                 massage = 'خطأ في الجلسة، يرجى المحاولة مرة أخرى.'
             return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage})
 
-    @http.route('/inquiry/create', auth='public', website=True, methods=['POST'], csrf=False)
-    def inquiry_create(self, **kw):
-        massage = 'عذرًا، بعض القيم مفقودة! الرجاء ملء الحقول أولاً'
-        inquiry = False
-        if request.session.get('is_data'):
-            if kw.get('fname') and kw.get('lname'):
-                name = self.remove2(kw.get('fname')) + ' ' + self.remove2(kw.get('lname'))
-                activity_id_val = request.env['product.product'].sudo().browse(int(kw.get('sport_id')))
-                values = {
-                    'first_name': self.remove2(kw.get('fname')),
-                    'last_name': self.remove2(kw.get('lname')),
-                    'mobile': self.remove(kw.get('mobile')),
-                    'email': self.remove(kw.get('email')),
-                    'parent_mobile': self.remove(kw.get('parent_mobile')),
-                    'p_name': self.remove2(kw.get('parent_fullname')),
-                    'sport_id': activity_id_val.id,
-                    'level_id': kw.get('level_id'),
-                    'duration': kw.get('duration'),
-                    'query': kw.get('query'),
-                }
-                if values:
-                    inquiry = request.env['student.inquiry'].sudo().create(values)
-                    request.session['is_data'] = False
-            if inquiry:
-                massage = f'تم إنشاء طلب الاستفسار الخاص بك {inquiry.name} بنجاح.'
-                return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage, 'admission': inquiry})
-            else:
-                return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage, 'admission': inquiry})
-        else:
-            return request.render('bi_sport_center_management.registration_create_massage', {'massage': massage, 'admission': inquiry})
+
         
     @http.route('/registration/', type='http', auth='public', website=True, sitemap=False)
     def registration(self, **kw):
