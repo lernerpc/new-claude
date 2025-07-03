@@ -11,6 +11,7 @@
     "currency": 'EUR',
     'depends': ['base', 'mail', 'account', 'product', 'website', 'contacts', 'event','website_event_sale','stock','purchase', 'base_address_extended'],
     'data': [
+        'security/groups.xml',
         'security/ir.model.access.csv',
         'data/admission_data.xml',
         'demo/product_demo.xml',

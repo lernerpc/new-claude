@@ -4,10 +4,10 @@
     <record id="view_student_admission_form_inherit_invoice" model="ir.ui.view">
         <field name="name">student.admission.form.inherit.invoice</field>
         <field name="model">student.admission</field>
-        <field name="inherit_id" ref="bi_sport_center_management.view_student_admission_form"/>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='invoice_count']" position="after">
-                <field name="invoice_ids" readonly="1">
+                <field name="invoice_ids" readonly="1" groups="bi_sport_center_management.group_sports_admin">
                     <tree>
                         <field name="name"/>
                         <field name="invoice_date"/>
@@ -23,11 +23,11 @@
     <record id="view_student_admission_tree_inherit_invoice" model="ir.ui.view">
         <field name="name">student.admission.tree.inherit.invoice</field>
         <field name="model">student.admission</field>
-        <field name="inherit_id" ref="bi_sport_center_management.view_student_admission_tree"/>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_tree"/>
         <field name="arch" type="xml">
             <field name="invoice_count" position="after">
-                <field name="invoice_ids" widget="many2many_tags" readonly="1"/>
+                <field name="invoice_ids" widget="many2many_tags" readonly="1" groups="bi_sport_center_management.group_sports_admin"/>
             </field>
         </field>
     </record>
-</odoo> 
+</odoo>

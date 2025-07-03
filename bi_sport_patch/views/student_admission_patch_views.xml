@@ -5,6 +5,7 @@
         <field name="name">عرض وطباعة بطاقات العضوية</field>
         <field name="model_id" ref="bi_sport_center_management.model_student_admission"/>
         <field name="binding_model_id" ref="bi_sport_center_management.model_student_admission"/>
+        <field name="groups_id" eval="[(4, ref('bi_sport_center_management.group_sports_admin'))]"/>
         <field name="state">code</field>
         <field name="binding_type">action</field>
         <field name="code">
@@ -24,10 +25,10 @@
         <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_tree"/>
         <field name="arch" type="xml">
             <field name="name" position="after">
-                <field name="membership_number"/>
-                <field name="printed"/>
-                <field name="first_print_date"/>
-                <field name="last_print_date"/>
+                <field name="membership_number" groups="bi_sport_center_management.group_sports_admin"/>
+                <field name="printed" groups="bi_sport_center_management.group_sports_admin"/>
+                <field name="first_print_date" groups="bi_sport_center_management.group_sports_admin"/>
+                <field name="last_print_date" groups="bi_sport_center_management.group_sports_admin"/>
             </field>
         </field>
     </record>
@@ -38,12 +39,11 @@
         <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="action_print_and_mark" string="Print ID Card" type="object" class="oe_highlight"/>
+                <button name="action_print_and_mark" string="Print ID Card" type="object" class="oe_highlight" groups="bi_sport_center_management.group_sports_admin"/>
             </xpath>
             <xpath expr="//sheet/group/group[2]" position="inside">
-                <field name="membership_number"/>
+                <field name="membership_number" groups="bi_sport_center_management.group_sports_admin"/>
                 <field name="name" readonly="1"/>
-
             </xpath>
         </field>
     </record>

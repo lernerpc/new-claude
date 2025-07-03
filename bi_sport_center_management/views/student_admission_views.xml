@@ -1,9 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+    <!-- Security Groups Definition - Add this at the top -->
+    <record id="group_sports_admin" model="res.groups">
+        <field name="name">Sports Admin</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="comment">Full access to sports management system</field>
+    </record>
+
+    <record id="group_sports_officer" model="res.groups">
+        <field name="name">Sports Officer</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="comment">Limited access to student records only</field>
+    </record>
+
+    <!-- Views with proper group references -->
     <record model="ir.ui.view" id="student_admission_view_tree">
         <field name="name">student.admission.tree</field>
         <field name="model">student.admission</field>
         <field name="type">tree</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin'))]"/>
         <field name="arch" type="xml">
             <tree string="Student Admissions" limit="20">
                 <field name="name"/>
@@ -26,6 +41,7 @@
     <record id="view_student_admission_search" model="ir.ui.view">
         <field name="name">student.admission.search</field>
         <field name="model">student.admission</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin'))]"/>
         <field name="arch" type="xml">
             <search string="Student Admissions">
                 <!-- Default search fields in priority order -->
@@ -83,6 +99,7 @@
     <record id="student_admission_view_form" model="ir.ui.view">
         <field name="name">student.admission.view.form</field>
         <field name="model">student.admission</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin'))]"/>
         <field name="arch" type="xml">
             <form string="Student">
 
@@ -221,11 +238,13 @@
         </field>
     </record>
 
+    <!-- Actions with Security Groups -->
     <record id="action_student_admission" model="ir.actions.act_window">
         <field name="name">Student Admission</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">student.admission</field>
         <field name="view_mode">tree,form</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin'))]"/>
         <field name="help" type="html">
             <p class="oe_view_nocontent_create">
                     Click here to add a new Student.
@@ -244,6 +263,7 @@
         <field name="search_view_id" ref="bi_sport_center_management.view_res_partner_search_student_schedules"/>
         <field name="domain">[('is_student', '=', True)]</field>
         <field name="context">{'default_is_student': True}</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin')), (4, ref('group_sports_officer'))]"/>
         <field name="help" type="html">
             <p class="oe_view_nocontent_create">
                     Click here to add a new Student.
@@ -258,6 +278,7 @@
         <field name="view_mode">kanban,tree,form</field>
         <field name="domain">[('is_equipment', '=', True)]</field>
         <field name="context">{'default_is_equipment': True, 'default_detailed_type': 'product'}</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin'))]"/>
         <field name="help" type="html">
             <p class="oe_view_nocontent_create">
                     Click here to add a new Sports equipments.
@@ -272,6 +293,7 @@
         <field name="view_mode">kanban,tree,form</field>
         <field name="domain">[('is_coach', '=', True)]</field>
         <field name="context">{'default_is_coach': True}</field>
+        <field name="groups_id" eval="[(4, ref('group_sports_admin'))]"/>
         <field name="help" type="html">
             <p class="oe_view_nocontent_create">
                     Click here to add a new Coach.
@@ -279,18 +301,20 @@
         </field>
     </record>
 
-    <menuitem id="student_admission_main_menu" name="Sports Management Center" sequence="20" web_icon="bi_sport_center_management,static/description/icon.png">
-        <menuitem id="student_admission_menu" name="Admission" sequence="20">
-            <menuitem id="admission_student_menu" name="Registrations" sequence="10" action="action_student_admission"/>
+    <!-- Menus with Security Groups -->
+    <menuitem id="student_admission_main_menu" name="Sports Management Center" sequence="20" web_icon="bi_sport_center_management,static/description/icon.png" groups="group_sports_admin,group_sports_officer">
+        <menuitem id="student_admission_menu" name="Admission" sequence="20" groups="group_sports_admin">
+            <menuitem id="admission_student_menu" name="Registrations" sequence="10" action="action_student_admission" groups="group_sports_admin"/>
         </menuitem>
-        <menuitem id="student_admission_menu" name="Admission" sequence="30">
-            <menuitem id="partner_student_menu_sub" name="Students" sequence="20" action="action_partner_student"/>
+        <menuitem id="student_admission_menu_students" name="Students" sequence="30" groups="group_sports_admin,group_sports_officer">
+            <menuitem id="partner_student_menu_sub" name="Students" sequence="20" action="action_partner_student" groups="group_sports_admin,group_sports_officer"/>
         </menuitem>
-        <menuitem id="student_sport_menu" name="Sports" sequence="40">
-            <menuitem id="sport_trainer_menu" name="Coach" sequence="10" action="action_partner_trainer"/>
-            <menuitem id="sport_product_equipment_menu" name="Sports Equipments" sequence="1" action="action_sport_product_equipment"/>
+        <menuitem id="student_sport_menu" name="Sports" sequence="40" groups="group_sports_admin">
+            <menuitem id="sport_trainer_menu" name="Coach" sequence="10" action="action_partner_trainer" groups="group_sports_admin"/>
+            <menuitem id="sport_product_equipment_menu" name="Sports Equipments" sequence="1" action="action_sport_product_equipment" groups="group_sports_admin"/>
         </menuitem>
     </menuitem>
+
 
 
 

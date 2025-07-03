@@ -1,0 +1,14 @@
+<odoo>
+
+    <record id="group_sports_admin" model="res.groups">
+        <field name="name">Sports Admin</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="comment">Full access to sports management system</field>
+    </record>
+
+    <record id="group_sports_officer" model="res.groups">
+        <field name="name">Sports Officer</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="comment">Limited access to sports system</field>
+    </record>
+</odoo>
