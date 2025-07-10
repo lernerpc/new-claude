@@ -32,6 +32,9 @@
         'views/purchase_views.xml',
         'views/sport_scedule_views.xml',
         'views/schedule_selection.xml',
+        'views/student_sport_payment_report_views.xml',
+'views/sport_payment_dashboard_views.xml',
+'views/sport_selection_wizard_views.xml',
     ],
     'assets': {
         'web.assets_frontend': [
@@ -50,4 +53,11 @@
     'auto_install': False,
     'live_test_url':'https://www.browseinfo.com/demo-request?app=bi_sport_center_management&version=17&edition=Community',
     "images":['static/description/Banner.gif'],
+'web.assets_backend': [
+    'bi_sport_center_management/static/src/css/dashboard.css',
+    'bi_sport_center_management/static/src/css/sport_dashboard.css',
+    'bi_sport_center_management/static/src/js/dashboard_action.js',
+    'bi_sport_center_management/static/src/js/sport_dashboard.js',
+    'bi_sport_center_management/static/src/xml/dashboard.xml',
+],
 }

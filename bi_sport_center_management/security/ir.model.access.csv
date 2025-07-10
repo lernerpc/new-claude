@@ -15,3 +15,7 @@ access_student_schedule_user,student.schedule user,model_student_schedule,base.g
 access_sport_schedule_day_manager,sport.schedule.day manager,model_sport_schedule_day,base.group_system,1,1,1,1
 access_sport_schedule_day_user,sport.schedule.day user,model_sport_schedule_day,base.group_user,1,1,1,1
 bi_sport_center_management.access_admission_schedule_selection,access_admission_schedule_selection,bi_sport_center_management.model_admission_schedule_selection,base.group_user,1,1,1,1
+access_student_sport_payment_report,access_student_sport_payment_report,model_student_sport_payment_report,base.group_user,1,0,0,0
+access_sport_payment_dashboard,access_sport_payment_dashboard,model_sport_payment_dashboard,base.group_user,1,0,0,0
+access_sport_payment_dashboard,sport.payment.dashboard,model_sport_payment_dashboard,base.group_user,1,1,1,1
+access_sport_selection_wizard,sport.selection.wizard,model_sport_selection_wizard,base.group_user,1,1,1,1

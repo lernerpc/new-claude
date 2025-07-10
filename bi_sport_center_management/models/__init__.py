@@ -13,3 +13,7 @@ from . import student_admission
 from . import sport_schedule_day
 from . import sport_schedule
 from . import student_schedule
+# from . import student_sport_payment_report
+from . import student_sport_payment_report
+from . import sport_payment_dashboard
+from . import sport_selection_wizard

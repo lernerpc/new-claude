@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Simple Working Dashboard -->
+        <record id="view_sport_payment_dashboard_form" model="ir.ui.view">
+            <field name="name">sport.payment.dashboard.form</field>
+            <field name="model">sport.payment.dashboard</field>
+            <field name="arch" type="xml">
+                <form string="Sport Payment Dashboard" create="false" edit="false" delete="false">
+                    <sheet>
+                        <!-- Title with current filter -->
+                        <h1 class="text-center mb-4">
+                            <i class="fa fa-dashboard me-2 text-primary"></i>
+                            لوحة التحكم - تقرير المدفوعات الرياضية
+                            <br/>
+                            <small class="text-muted">المرشح الحالي: <field name="selected_sport_name" readonly="1" nolabel="1"/></small>
+                        </h1>
+
+                        <!-- Hidden fields -->
+                        <field name="selected_sport_id" invisible="1"/>
+                        <field name="total_students" invisible="1"/>
+                        <field name="paid_students" invisible="1"/>
+                        <field name="unpaid_students" invisible="1"/>
+                        <field name="total_revenue" invisible="1"/>
+                        <field name="paid_revenue" invisible="1"/>
+                        <field name="unpaid_revenue" invisible="1"/>
+                        <field name="payment_rate" invisible="1"/>
+
+                        <!-- Clear Filter Button -->
+                        <div class="text-center mb-3">
+                            <button name="clear_sport_filter" type="object" class="btn btn-outline-secondary">
+                                <i class="fa fa-times me-1"></i>عرض جميع الرياضات
+                            </button>
+                        </div>
+
+                        <!-- KPI Cards -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-primary text-white h-100">
+                                    <div class="card-body text-center">
+                                        <h5>إجمالي الطلاب</h5>
+                                        <h2><field name="total_students" readonly="1" nolabel="1"/></h2>
+                                        <i class="fa fa-users fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-success text-white h-100">
+                                    <div class="card-body text-center">
+                                        <h5>المدفوعات</h5>
+                                        <h2><field name="paid_students" readonly="1" nolabel="1"/></h2>
+                                        <small><field name="payment_rate" readonly="1" nolabel="1"/>%</small>
+                                        <br/><strong><field name="paid_revenue" readonly="1" nolabel="1"/> ج.م</strong>
+                                        <br/><i class="fa fa-check-circle fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-warning text-white h-100">
+                                    <div class="card-body text-center">
+                                        <h5>غير المدفوع</h5>
+                                        <h2><field name="unpaid_students" readonly="1" nolabel="1"/></h2>
+                                        <strong><field name="unpaid_revenue" readonly="1" nolabel="1"/> ج.م</strong>
+                                        <br/><i class="fa fa-exclamation-circle fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card bg-info text-white h-100">
+                                    <div class="card-body text-center">
+                                        <h5>إجمالي الإيرادات</h5>
+                                        <h2><field name="total_revenue" readonly="1" nolabel="1"/></h2>
+                                        <small>جنيه مصري</small>
+                                        <br/><i class="fa fa-money fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-light text-center">
+                                        <h5><i class="fa fa-cog me-2"></i>إجراءات سريعة</h5>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <button name="open_detailed_report" type="object" class="btn btn-primary me-2">
+                                            <i class="fa fa-table me-1"></i>التقرير المفصل
+                                        </button>
+                                        <button name="open_student_admissions" type="object" class="btn btn-info me-2">
+                                            <i class="fa fa-users me-1"></i>تسجيلات الطلاب
+                                        </button>
+                                        <button name="get_all_sports_with_revenue" type="object" class="btn btn-success">
+                                            <i class="fa fa-trophy me-1"></i>عرض جميع الرياضات
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stats Row -->
+                        <div class="row">
+                            <div class="col-lg-12 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light text-center">
+                                        <h5><i class="fa fa-chart-pie me-2"></i>إحصائيات المدفوعات المفصلة</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-md-3">
+                                                <div class="text-primary">
+                                                    <h3><field name="total_students" readonly="1" nolabel="1"/></h3>
+                                                    <p><strong>إجمالي الطلاب</strong></p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-success">
+                                                    <h3><field name="paid_students" readonly="1" nolabel="1"/></h3>
+                                                    <p><strong>مدفوع</strong></p>
+                                                    <small><field name="paid_revenue" readonly="1" nolabel="1"/> ج.م</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-danger">
+                                                    <h3><field name="unpaid_students" readonly="1" nolabel="1"/></h3>
+                                                    <p><strong>غير مدفوع</strong></p>
+                                                    <small><field name="unpaid_revenue" readonly="1" nolabel="1"/> ج.م</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-info">
+                                                    <h3><field name="payment_rate" readonly="1" nolabel="1"/>%</h3>
+                                                    <p><strong>معدل الدفع</strong></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="progress mt-3" style="height: 30px;">
+                                            <div class="progress-bar bg-success" style="width: 85%">
+                                                <span>مدفوع</span>
+                                            </div>
+                                            <div class="progress-bar bg-danger" style="width: 15%">
+                                                <span>غير مدفوع</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="alert alert-info text-center">
+                                    <h6><i class="fa fa-info-circle"></i> تعليمات الاستخدام</h6>
+                                    <p>
+                                        • اضغط على "التقرير المفصل" للحصول على تقرير شامل قابل للفلترة<br/>
+                                        • اضغط على "تسجيلات الطلاب" لعرض جميع الطلاب المسجلين<br/>
+                                        • اضغط على "عرض جميع الرياضات" لرؤية إحصائيات كل رياضة
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Dashboard Action -->
+        <record id="action_sport_payment_dashboard" model="ir.actions.act_window">
+            <field name="name">لوحة التحكم المتقدمة</field>
+            <field name="res_model">sport.payment.dashboard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_sport_payment_dashboard_form"/>
+            <field name="target">current</field>
+            <field name="res_id">1</field>
+            <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="menu_sport_payment_dashboard" 
+                  name="لوحة التحكم المتقدمة"
+                  parent="student_admission_main_menu"
+                  action="action_sport_payment_dashboard" 
+                  sequence="5"/>
+    </data>
+</odoo>

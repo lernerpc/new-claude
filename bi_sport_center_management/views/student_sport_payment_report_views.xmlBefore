@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Tree/List View -->
+        <record id="view_student_sport_payment_report_tree" model="ir.ui.view">
+            <field name="name">student.sport.payment.report.tree</field>
+            <field name="model">student.sport.payment.report</field>
+            <field name="arch" type="xml">
+                <tree string="Student Sport Payment Report" create="false" edit="false" delete="false">
+                    <field name="student_name"/>
+                    <field name="activity_name"/>
+                    <field name="membership_number"/>
+                    <field name="receipt_number"/>
+                    <field name="membership_month"/>
+                    <field name="payment_memo" string="رقم الايصال"/>
+                    <field name="payment_state"/>
+                    <field name="invoice_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Search View -->
+        <record id="view_student_sport_payment_report_search" model="ir.ui.view">
+            <field name="name">student.sport.payment.report.search</field>
+            <field name="model">student.sport.payment.report</field>
+            <field name="arch" type="xml">
+                <search string="Student Sport Payment Report">
+                    <field name="student_name"/>
+                    <field name="activity_name"/>
+                    <field name="membership_number"/>
+                    <field name="receipt_number"/>
+                    <field name="membership_month"/>
+                    <field name="payment_memo"/>
+                    <field name="payment_state"/>
+                    
+                    <filter name="paid" string="Paid" domain="[('payment_state', '=', 'paid')]"/>
+                    <filter name="not_paid" string="Not Paid" domain="[('payment_state', '=', 'not_paid')]"/>
+                    <filter name="partial" string="Partially Paid" domain="[('payment_state', '=', 'partial')]"/>
+                    
+                    <group expand="0" string="Group By">
+                        <filter name="group_by_activity" string="Sport/Activity" context="{'group_by': 'activity_name'}"/>
+                        <filter name="group_by_payment_state" string="Payment Status" context="{'group_by': 'payment_state'}"/>
+                        <filter name="group_by_month" string="Membership Month" context="{'group_by': 'membership_month'}"/>
+                        <filter name="group_by_student" string="Student" context="{'group_by': 'student_name'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_student_sport_payment_report" model="ir.actions.act_window">
+            <field name="name">Student Sport Payment Report</field>
+            <field name="res_model">student.sport.payment.report</field>
+            <field name="view_mode">tree</field>
+            <field name="view_id" ref="view_student_sport_payment_report_tree"/>
+            <field name="search_view_id" ref="view_student_sport_payment_report_search"/>
+            <field name="context">{}</field>
+        </record>
+
+        <!-- Menu Item -->
+        <menuitem id="menu_student_sport_payment_report" 
+                  name="Student Sport Payment Report"
+                  parent="student_admission_main_menu"
+                  action="action_student_sport_payment_report" 
+                  sequence="100"/>
+    </data>
+</odoo>
