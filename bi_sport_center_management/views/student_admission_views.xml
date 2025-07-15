@@ -121,11 +121,11 @@
                     <button string="Sync Changes" name="action_sync_changes" type="object" class="btn-secondary" help="Sync all changes to parent and student records"/>
 
                     <!-- Member Type Transfer Buttons -->
-                    <button name="action_transfer_to_academic" string="Transfer to Academic" type="object" class="btn-warning" invisible="member_type == 'academic' or state == 'cancel'" help="Transfer this student to academic membership"/>
+                    <!-- <button name="action_transfer_to_academic" string="Transfer to Academic" type="object" class="btn-warning" invisible="member_type == 'academic' or state == 'cancel'" help="Transfer this student to academic membership"/>
 
                     <button name="action_transfer_to_regular" string="Transfer to Regular" type="object" class="btn-info" invisible="member_type == 'regular' or state == 'cancel'" help="Transfer this student to regular membership"/>
 
-                    <button name="action_transfer_member_type" string="Switch Member Type" type="object" class="btn-secondary" invisible="state == 'cancel'" help="Switch between academic and regular membership"/>
+                    <button name="action_transfer_member_type" string="Switch Member Type" type="object" class="btn-secondary" invisible="state == 'cancel'" help="Switch between academic and regular membership"/> -->
 
                     <!-- <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/> -->
                     <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="1"/>
@@ -167,13 +167,13 @@
                     </group>
                     <group>
                         <group string="Membership Details">
-                            <field name="member_type" widget="radio" options="{'horizontal': true}" help="Select membership type: Regular for sports activities, Academic for academic programs"/>
-                            <field name="academic_subtype" invisible="member_type != 'academic'" help="Select academic program type"/>
-                            <field name="pricelist_id" invisible="member_type != 'regular'" help="Select organization/affiliation for pricing"/>
+                            <field name="member_type" widget="radio" options="{'horizontal': true}" readonly="state in ['enrolled', 'student']" help="Select membership type: Regular for sports activities, Academic for academic programs"/>
+                            <field name="academic_subtype" invisible="member_type != 'academic'" readonly="state in ['enrolled', 'student']" help="Select academic program type"/>
+                            <field name="pricelist_id" invisible="member_type != 'regular'" readonly="state in ['enrolled', 'student']" help="Select organization/affiliation for pricing"/>
                         </group>
                         <group string="Sport Activity Details">
-                            <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" />
-                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" />
+                            <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" readonly="state in ['enrolled', 'student']"/>
+                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" readonly="state in ['enrolled', 'student']"/>
                         </group>
                     </group>
                     <group>
@@ -251,7 +251,7 @@
     </record>
 
     <!-- Server Actions for Member Type Transfer -->
-    <record id="action_transfer_to_academic" model="ir.actions.server">
+    <!-- <record id="action_transfer_to_academic" model="ir.actions.server">
         <field name="name">Transfer to Academic</field>
         <field name="model_id" ref="model_student_admission"/>
         <field name="binding_model_id" ref="model_student_admission"/>
@@ -275,7 +275,7 @@
                 if record.member_type != 'regular' and record.state != 'cancel':
                     record.action_transfer_to_regular()
         </field>
-    </record>
+    </record> -->
 
     <record id="action_student_admission" model="ir.actions.act_window">
         <field name="name">Student Admission</field>
