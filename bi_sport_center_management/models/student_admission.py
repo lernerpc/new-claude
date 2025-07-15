@@ -363,6 +363,8 @@ class StudentAdmission(models.Model):
                     non_academic_activities = record.activity_ids.filtered(lambda p: p.name != 'أكاديمية')
                     if non_academic_activities:
                         raise ValidationError(_('العضوية الأكاديمية لا يمكن أن تشمل أنشطة رياضية.'))
+                
+                # Academic members don't need pricelist (remove the requirement)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -996,6 +998,7 @@ class StudentAdmission(models.Model):
         if self.schedule_selection_ids:
             self.schedule_selection_ids = [(5, 0, 0)]  # Clear all schedule selections
 
+
     def get_total_price(self):
         """Calculate total price based on member type and registration date"""
         total = 0
@@ -1014,14 +1017,16 @@ class StudentAdmission(models.Model):
                     is_late_registration = True
                     break
 
-        # Base fees (always included)
+        # Base fees - Different for academic vs regular members
         if self.member_type == 'academic':
-            total += 50  # Academic card fee
+            # Academic members: Only ID card fee (no form fee)
+            total += 50  # Academic ID card fee only
         else:
+            # Regular members: Both ID card and form fees
             total += 50  # ID card fee
             total += 50  # Form fee
 
-        # Guardian fee (always included if guardian is selected)
+        # Guardian fee (always included if guardian is selected, regardless of member type)
         if self.is_guardian:
             total += 50
 
@@ -1033,7 +1038,6 @@ class StudentAdmission(models.Model):
                     total += price
 
         return total
-
     def get_member_type_display(self):
         """Get display name for member type"""
         member_type_dict = dict(self._fields['member_type'].selection)
