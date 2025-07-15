@@ -167,13 +167,13 @@
                     </group>
                     <group>
                         <group string="Membership Details">
-                            <field name="member_type" widget="radio" options="{'horizontal': true}" readonly="state in ['cancel', 'student']" help="Select membership type: Regular for sports activities, Academic for academic programs"/>
-                            <field name="academic_subtype" invisible="member_type != 'academic'" readonly="state in ['cancel', 'student']" help="Select academic program type"/>
-                            <field name="pricelist_id" invisible="member_type != 'regular'" readonly="state in ['cancel', 'student']" help="Select organization/affiliation for pricing"/>
+                            <field name="member_type" widget="radio" options="{'horizontal': true}" help="Select membership type: Regular for sports activities, Academic for academic programs"/>
+                            <field name="academic_subtype" invisible="member_type != 'academic'" help="Select academic program type"/>
+                            <field name="pricelist_id" invisible="member_type != 'regular'" help="Select organization/affiliation for pricing"/>
                         </group>
                         <group string="Sport Activity Details">
-                            <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" readonly="state in ['cancel', 'student']"/>
-                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" readonly="state in ['cancel', 'student']"/>
+                            <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" />
+                            <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" />
                         </group>
                     </group>
                     <group>
