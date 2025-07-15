@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Part of BrowseInfo. See LICENSE file for full copyright and licensing details.
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _  # Added _ import here
 from odoo.exceptions import ValidationError
 
 class ResPartner(models.Model):
@@ -57,18 +57,51 @@ class ResPartner(models.Model):
     @api.constrains('student_national_id', 'parent_national_id', 'mobile', 'phone')
     def _check_national_id_and_mobile(self):
         for record in self:
-            # Validate student_national_id
-            if record.student_national_id and (not record.student_national_id.isdigit() or len(record.student_national_id) != 14):
-                raise ValidationError(_('الرقم القومي للطالب يجب أن يكون 14 رقمًا.'))
-            # Validate parent_national_id
-            if record.parent_national_id and (not record.parent_national_id.isdigit() or len(record.parent_national_id) != 14):
-                raise ValidationError(_('الرقم القومي لولي الأمر يجب أن يكون 14 رقمًا.'))
-            # Validate mobile
-            if record.mobile and (not record.mobile.startswith('0') or not record.mobile.isdigit() or len(record.mobile) != 11):
-                raise ValidationError(_('رقم الجوال يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا.'))
-            # Validate phone (parent_mobile)
-            if record.phone and (not record.phone.startswith('0') or not record.phone.isdigit() or len(record.phone) != 11):
-                raise ValidationError(_('رقم جوال ولي الأمر يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا.'))
+            # Validate student_national_id (optional - only validate if provided)
+            if record.student_national_id and record.student_national_id.strip():
+                if not record.student_national_id.isdigit() or len(record.student_national_id) != 14:
+                    raise ValidationError(_('الرقم القومي للطالب يجب أن يكون 14 رقمًا.'))
+            
+            # Validate parent_national_id (optional - only validate if provided)
+            if record.parent_national_id and record.parent_national_id.strip():
+                if not record.parent_national_id.isdigit() or len(record.parent_national_id) != 14:
+                    raise ValidationError(_('الرقم القومي لولي الأمر يجب أن يكون 14 رقمًا.'))
+            
+            # Validate mobile (optional - only validate if provided)
+            if record.mobile and record.mobile.strip():
+                if not record.mobile.startswith('0') or not record.mobile.isdigit() or len(record.mobile) != 11:
+                    raise ValidationError(_('رقم الجوال يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا.'))
+            
+            # Validate phone/parent_mobile (optional - only validate if provided)
+            if record.phone and record.phone.strip():
+                if not record.phone.startswith('0') or not record.phone.isdigit() or len(record.phone) != 11:
+                    raise ValidationError(_('رقم جوال ولي الأمر يجب أن يبدأ بـ 0 ويتكون من 11 رقمًا.'))
+
+    def update_parent_privileges_or_logic(self, child_guardian, child_parking):
+        """
+        Update parent privileges using OR logic based on all children's privileges.
+        This method should be called whenever a child's privileges change.
+        """
+        self.ensure_one()
+        
+        if not self.is_parent:
+            return
+        
+        # Get all children of this parent
+        all_children_admissions = self.env['student.admission'].search([
+            ('parent_national_id', '=', self.parent_national_id),
+            ('state', 'in', ['new', 'enrolled', 'student'])
+        ])
+        
+        # Calculate OR logic: parent should have privilege if ANY child has it
+        should_have_guardian = any(admission.is_guardian for admission in all_children_admissions)
+        should_have_parking = any(admission.is_parking for admission in all_children_admissions)
+        
+        # Update parent privileges
+        self.write({
+            'is_guardian': should_have_guardian,
+            'is_parking': should_have_parking,
+        })
 
     @api.model
     def get_data(self):
@@ -124,16 +157,6 @@ class ResPartner(models.Model):
             'target': 'new',
             'context': {'active_ids': self.ids},
         }
-    
-    
-
-    
-    
-
-
-
-
-
 
     @api.depends('is_student', 'student_national_id')
     def _compute_current_admission(self):

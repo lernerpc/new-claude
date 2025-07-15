@@ -13,6 +13,7 @@
                 <field name="student_national_id"/>
                 <field name="parent_national_id"/>
                 <field name ="p_name"/>
+                <field name="member_type" string="Member Type" widget="badge" decoration-info="member_type == 'academic'" decoration-success="member_type == 'regular'"/>
                 <field name="activity_ids" widget="many2many_tags" required="1"/>
                 <field name="state" widget="badge" decoration-warning="state == 'enrolled'" decoration-primary="state == 'new'" decoration-success="state == 'student'"/>
                 <field widget="badge" name="payment_state" string="Payment Status" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-muted="payment_state == 'not_paid'"/>
@@ -47,6 +48,10 @@
                 <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancel')]"/>
 
                 <separator/>
+                <filter string="Regular Members" name="regular_members" domain="[('member_type', '=', 'regular')]"/>
+                <filter string="Academic Members" name="academic_members" domain="[('member_type', '=', 'academic')]"/>
+
+                <separator/>
 
                 <filter string="Not Paid" name="not_paid" domain="[('payment_state', '=', 'not_paid')]"/>
                 <filter string="Partially Paid" name="partial_paid" domain="[('payment_state', '=', 'partial')]"/>
@@ -68,6 +73,7 @@
 
                 <!-- Group By -->
                 <group expand="0" string="Group By">
+                    <filter string="Member Type" name="group_member_type" context="{'group_by': 'member_type'}"/>
                     <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
                     <filter string="Payment State" name="group_payment_state" context="{'group_by': 'payment_state'}"/>
                     <filter string="Coach/Trainer" name="group_trainer" context="{'group_by': 'trainer_id'}"/>
@@ -113,6 +119,14 @@
                     <button string="Enroll" name="action_enroll" type="object" class="oe_highlight" invisible="state != 'new'"/>
                     <button name="action_create_invoice" string="Create Invoice" type="object" invisible="fees_count > 0 or state != 'enrolled'"/>
                     <button string="Sync Changes" name="action_sync_changes" type="object" class="btn-secondary" help="Sync all changes to parent and student records"/>
+
+                    <!-- Member Type Transfer Buttons -->
+                    <button name="action_transfer_to_academic" string="Transfer to Academic" type="object" class="btn-warning" invisible="member_type == 'academic' or state == 'cancel'" help="Transfer this student to academic membership"/>
+
+                    <button name="action_transfer_to_regular" string="Transfer to Regular" type="object" class="btn-info" invisible="member_type == 'regular' or state == 'cancel'" help="Transfer this student to regular membership"/>
+
+                    <button name="action_transfer_member_type" string="Switch Member Type" type="object" class="btn-secondary" invisible="state == 'cancel'" help="Switch between academic and regular membership"/>
+
                     <!-- <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="state != 'enrolled'"/> -->
                     <button string="Make a student" name="action_make_student" type="object" class="oe_highlight" invisible="1"/>
                     <button string="Cancel" name="action_cancel" type="object" invisible="state in ['cancel', 'student']"/>
@@ -152,72 +166,114 @@
                         </group>
                     </group>
                     <group>
+                        <group string="Membership Details">
+                            <field name="member_type" widget="radio" options="{'horizontal': true}" readonly="state in ['cancel', 'student']" help="Select membership type: Regular for sports activities, Academic for academic programs"/>
+                            <field name="academic_subtype" invisible="member_type != 'academic'" readonly="state in ['cancel', 'student']" help="Select academic program type"/>
+                            <field name="pricelist_id" invisible="member_type != 'regular'" readonly="state in ['cancel', 'student']" help="Select organization/affiliation for pricing"/>
+                        </group>
                         <group string="Sport Activity Details">
                             <field name="activity_ids" widget="many2many_tags" options="{'no_create_edit': True, 'no_create': True}" required="state == 'enrolled'" readonly="state in ['cancel', 'student']"/>
                             <field name="trainer_id" options="{'no_create_edit': True, 'no_create': True}" readonly="state in ['cancel', 'student']"/>
                         </group>
+                    </group>
+                    <group>
                         <group name="disability" string="Disability">
                             <field name="is_disability"/>
                         </group>
-                    </group>
-                    <group>
                         <group string="Parent Information">
                             <field name="is_guardian"/>
                             <field name="is_parking"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Additional Information">
+                            <field name="membership_number" readonly="state in ['cancel', 'student']"/>
+                            <field name="birth_date" readonly="state in ['cancel', 'student']"/>
+                            <field name="gender" readonly="state in ['cancel', 'student']"/>
+                            <field name="student_national_id" readonly="state in ['cancel', 'student']"/>
+                            <field name="parent_national_id" readonly="state in ['cancel', 'student']"/>
                         </group>
                         <group string="Parent Photo">
                             <field name="parent_photo" widget="image" class="oe_avatar" options="{'size': [150, 150]}"/>
                         </group>
                     </group>
                     <field name="disability_description" placeholder="Describe disability..." invisible="not is_disability"/>
-                </sheet>
-                <notebook position="inside">
-                    <page string="Schedule Details">
-                        <group>
-                            <field name="schedule_selection_ids">
-                                <tree editable="bottom">
-                                    <field name="activity_id" domain="[('id', 'in', parent.activity_ids)]"/>
-                                    <field name="schedule_id" domain="[('sport_id', '=', activity_id)]"/>
-                                </tree>
-                                <form>
-                                    <group>
+
+                    <notebook>
+                        <page string="Schedule Details">
+                            <group>
+                                <field name="schedule_selection_ids">
+                                    <tree editable="bottom">
                                         <field name="activity_id" domain="[('id', 'in', parent.activity_ids)]"/>
                                         <field name="schedule_id" domain="[('sport_id', '=', activity_id)]"/>
-                                    </group>
-                                </form>
-                            </field>
-                        </group>
-                    </page>
-
-                    <page string="Fee Details" name="fee_details">
-                        <group>
-                            <group string="Fee Summary">
-                                <field name="invoice_count" string="Total Invoices"/>
-                                <field name="fees_count" string="Membership Fees"/>
-                                <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
-                                <field name="payment_date" string="Last Payment Date"/>
+                                    </tree>
+                                    <form>
+                                        <group>
+                                            <field name="activity_id" domain="[('id', 'in', parent.activity_ids)]"/>
+                                            <field name="schedule_id" domain="[('sport_id', '=', activity_id)]"/>
+                                        </group>
+                                    </form>
+                                </field>
                             </group>
-                        </group>
+                        </page>
 
-                        <!-- Fee Details HTML Display -->
-                        <separator string="Membership Fees Details"/>
-                        <field name="fee_details" widget="html" readonly="1" nolabel="1"/>
+                        <page string="Fee Details" name="fee_details">
+                            <group>
+                                <group string="Fee Summary">
+                                    <field name="invoice_count" string="Total Invoices"/>
+                                    <field name="fees_count" string="Membership Fees"/>
+                                    <field name="payment_state" widget="badge" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'"/>
+                                    <field name="payment_date" string="Last Payment Date"/>
+                                </group>
+                            </group>
 
-                        <!-- Fixed: Fee Invoices in Tree View - Removed membership_fee_name field -->
-                        <separator string="Fee Invoices"/>
-                        <field name="fee_invoice_ids" readonly="1" nolabel="1">
-                            <tree string="Fee Invoices" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'">
-                                <field name="name" string="Invoice"/>
-                                <field name="ref" string="Reference"/>
-                                <field name="invoice_date" string="Date"/>
-                                <field name="amount_total" string="Amount"/>
-                                <field name="currency_id" groups="base.group_multi_currency"/>
-                                <field name="payment_state" widget="badge" string="Status"/>
-                            </tree>
-                        </field>
-                    </page>
-                </notebook>
+                            <!-- Fee Details HTML Display -->
+                            <separator string="Membership Fees Details"/>
+                            <field name="fee_details" widget="html" readonly="1" nolabel="1"/>
+
+                            <!-- Fixed: Fee Invoices in Tree View - Removed membership_fee_name field -->
+                            <separator string="Fee Invoices"/>
+                            <field name="fee_invoice_ids" readonly="1" nolabel="1">
+                                <tree string="Fee Invoices" decoration-success="payment_state == 'paid'" decoration-warning="payment_state == 'partial'" decoration-info="payment_state == 'in_payment'" decoration-danger="payment_state == 'not_paid'">
+                                    <field name="name" string="Invoice"/>
+                                    <field name="ref" string="Reference"/>
+                                    <field name="invoice_date" string="Date"/>
+                                    <field name="amount_total" string="Amount"/>
+                                    <field name="currency_id" groups="base.group_multi_currency"/>
+                                    <field name="payment_state" widget="badge" string="Status"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
             </form>
+        </field>
+    </record>
+
+    <!-- Server Actions for Member Type Transfer -->
+    <record id="action_transfer_to_academic" model="ir.actions.server">
+        <field name="name">Transfer to Academic</field>
+        <field name="model_id" ref="model_student_admission"/>
+        <field name="binding_model_id" ref="model_student_admission"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">
+            for record in records:
+                if record.member_type != 'academic' and record.state != 'cancel':
+                    record.action_transfer_to_academic()
+        </field>
+    </record>
+
+    <record id="action_transfer_to_regular" model="ir.actions.server">
+        <field name="name">Transfer to Regular</field>
+        <field name="model_id" ref="model_student_admission"/>
+        <field name="binding_model_id" ref="model_student_admission"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">
+            for record in records:
+                if record.member_type != 'regular' and record.state != 'cancel':
+                    record.action_transfer_to_regular()
         </field>
     </record>
 
