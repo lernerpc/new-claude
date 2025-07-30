@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Partner Suspension Views -->
+    <record id="view_partner_suspension_tree" model="ir.ui.view">
+        <field name="name">partner.suspension.tree</field>
+        <field name="model">partner.suspension</field>
+        <field name="arch" type="xml">
+            <tree string="Partner Suspensions" decoration-danger="is_current == True" decoration-muted="state == 'expired'">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="suspension_type" widget="badge"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="state" widget="badge" decoration-danger="state == 'active'" decoration-success="state == 'expired'" decoration-muted="state == 'cancelled'"/>
+                <field name="is_current" widget="boolean_toggle"/>
+                <field name="reason"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_partner_suspension_form" model="ir.ui.view">
+        <field name="name">partner.suspension.form</field>
+        <field name="model">partner.suspension</field>
+        <field name="arch" type="xml">
+            <form string="Partner Suspension">
+                <header>
+                    <button name="action_cancel_suspension" string="Cancel Suspension" type="object" class="btn-warning" invisible="state != 'active'" confirm="Are you sure you want to cancel this suspension?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="active,expired,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Suspension Details">
+                            <field name="partner_id" readonly="1"/>
+                            <field name="suspension_type" widget="badge"/>
+                            <field name="is_current" widget="boolean_toggle"/>
+                        </group>
+                        <group string="Duration">
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                        </group>
+                    </group>
+
+                    <group string="Reason">
+                        <field name="reason" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Suspension Wizard View -->
+    <record id="view_partner_suspension_wizard" model="ir.ui.view">
+        <field name="name">partner.suspension.wizard.form</field>
+        <field name="model">partner.suspension.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Suspend Partner">
+                <group>
+                    <group string="Partner Information">
+                        <field name="partner_id" readonly="1"/>
+                        <field name="suspension_type" widget="radio" options="{'horizontal': true}"/>
+                    </group>
+                    <group string="Suspension Period">
+                        <field name="start_date"/>
+                        <field name="end_date"/>
+                    </group>
+                </group>
+
+                <group string="Reason for Suspension">
+                    <field name="reason" nolabel="1"/>
+                </group>
+
+                <footer>
+                    <button name="action_confirm_suspension" string="Confirm Suspension" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Enhanced res.partner Tree View with Suspension Tags -->
+    <record id="res_partner_tree_suspension_enhanced" model="ir.ui.view">
+        <field name="name">res.partner.tree.suspension.enhanced</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <!-- Add suspension status after display_name -->
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="is_suspended" invisible="1"/>
+                <field name="suspension_end_date" invisible="1"/>
+                <field name="suspension_reason" invisible="1"/>
+                <field name="suspension_count" invisible="1"/>
+
+                <!-- Suspension Status Column with Tag -->
+                <field name="suspension_status_display" string="Suspension Status" widget="html" optional="show"/>
+            </xpath>
+
+            <!-- Add row decoration for suspended partners -->
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-danger">is_suspended == True</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Enhanced res.partner Form View with Suspension Tab -->
+    <record id="res_partner_form_suspension_enhanced" model="ir.ui.view">
+        <field name="name">res.partner.form.suspension.enhanced</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Suspension Alert Banner at top -->
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-danger" role="alert" style="margin: 0; padding: 15px 20px; border-radius: 0; font-weight: bold; text-align: center;" invisible="not is_suspended">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fa fa-ban fa-2x" style="color: white;"/>
+                            <div>
+                                <div style="font-size: 18px; color: white;">⚠️ SUSPENDED</div>
+                                <div style="font-size: 14px; color: #f8d7da;">Until: <field name="suspension_end_date" style="color: white; font-weight: bold;"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align: left;">
+                            <div style="font-size: 14px; color: #f8d7da;">Reason:</div>
+                            <div style="font-size: 16px; color: white; max-width: 300px;">
+                                <field name="suspension_reason"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Add Suspension Buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button type="object" name="action_suspend_partner" class="oe_stat_button" icon="fa-ban" invisible="is_suspended" style="color: #dc3545;">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Suspend</span>
+                    </div>
+                </button>
+
+                <button type="object" name="action_view_suspensions" class="oe_stat_button" icon="fa-history" decoration-danger="suspension_count > 0">
+                    <field name="suspension_count" widget="statinfo" string="Suspensions"/>
+                </button>
+            </xpath>
+
+            <!-- Add Suspension Tab -->
+            <xpath expr="//page[last()]" position="after">
+                <page string="🚫 Suspension Details" name="suspension_details" invisible="suspension_count == 0">
+
+                    <!-- Current Suspension Info -->
+                    <div invisible="not is_suspended">
+                        <div class="alert alert-warning" role="alert" style="margin-bottom: 20px;">
+                            <h4>
+                                <i class="fa fa-exclamation-triangle"/>
+ Currently Suspended</h4>
+                            <group>
+                                <group>
+                                    <field name="suspension_end_date" string="Suspended Until" readonly="1"/>
+                                    <field name="current_suspension_id" string="Current Suspension" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="suspension_reason" string="Suspension Reason" readonly="1"/>
+                                </group>
+                            </group>
+                        </div>
+                    </div>
+
+                    <!-- Suspension Status Summary -->
+                    <group string="Suspension Summary">
+                        <group>
+                            <field name="is_suspended" string="Currently Suspended" widget="boolean_toggle" readonly="1"/>
+                            <field name="suspension_count" string="Total Suspensions" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <!-- Suspension History -->
+                    <separator string="Suspension History"/>
+                    <field name="suspension_ids" readonly="1" nolabel="1">
+                        <tree decoration-danger="is_current == True" decoration-muted="state != 'active'" decoration-warning="state == 'cancelled'">
+                            <field name="name"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="state" widget="badge" decoration-danger="state == 'active'" decoration-success="state == 'expired'" decoration-muted="state == 'cancelled'"/>
+                            <field name="is_current" widget="boolean_toggle"/>
+                            <field name="reason"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+
+            <!-- Add hidden fields for computation -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="is_suspended" invisible="1"/>
+                <field name="suspension_count" invisible="1"/>
+                <field name="suspension_reason" invisible="1"/>
+                <field name="suspension_end_date" invisible="1"/>
+                <field name="current_suspension_id" invisible="1"/>
+                <field name="suspension_status_display" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Enhanced Student Admission Tree View with Suspension Tags -->
+    <record id="student_admission_tree_suspension_enhanced" model="ir.ui.view">
+        <field name="name">student.admission.tree.suspension.enhanced</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_tree"/>
+        <field name="arch" type="xml">
+            <!-- Add suspension fields after fees_count -->
+            <xpath expr="//field[@name='fees_count']" position="after">
+                <field name="is_suspended" invisible="1"/>
+                <field name="suspension_end_date" invisible="1"/>
+                <field name="suspension_reason" invisible="1"/>
+                <field name="suspension_count" invisible="1"/>
+
+                <!-- Suspension Status Column with Tag -->
+                <field name="suspension_status_display" string="Suspension Status" widget="html" optional="show"/>
+            </xpath>
+
+            <!-- Add row decoration for suspended students -->
+            <xpath expr="//tree" position="attributes">
+                <attribute name="decoration-danger">is_suspended == True</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Enhanced Student Admission Form View with Suspension Tab -->
+    <record id="student_admission_form_suspension_enhanced" model="ir.ui.view">
+        <field name="name">student.admission.form.suspension.enhanced</field>
+        <field name="model">student.admission</field>
+        <field name="inherit_id" ref="bi_sport_center_management.student_admission_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Add Suspension Alert Banner after header -->
+            <xpath expr="//header" position="after">
+                <div class="alert alert-danger" role="alert" style="margin: 0; padding: 15px 20px; border-radius: 0; font-weight: bold; text-align: center;" invisible="not is_suspended">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fa fa-ban fa-2x" style="color: white;"/>
+                            <div>
+                                <div style="font-size: 18px; color: white;">⚠️ STUDENT SUSPENDED</div>
+                                <div style="font-size: 14px; color: #f8d7da;">Until: <field name="suspension_end_date" style="color: white; font-weight: bold;"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align: left;">
+                            <div style="font-size: 14px; color: #f8d7da;">Reason:</div>
+                            <div style="font-size: 16px; color: white; max-width: 300px;">
+                                <field name="suspension_reason"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Add Suspension Buttons -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button type="object" name="action_suspend_student" class="oe_stat_button" icon="fa-ban" invisible="is_suspended" style="color: #dc3545;">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_text">Suspend</span>
+                    </div>
+                </button>
+
+                <button type="object" name="action_view_suspensions" class="oe_stat_button" icon="fa-history" decoration-danger="suspension_count > 0">
+                    <field name="suspension_count" widget="statinfo" string="Suspensions"/>
+                </button>
+            </xpath>
+
+            <!-- Add Suspension Tab -->
+            <xpath expr="//page[@name='fee_details']" position="after">
+                <page string="🚫 Suspension Details" name="suspension_details" invisible="suspension_count == 0">
+
+                    <!-- Current Suspension Info -->
+                    <div invisible="not is_suspended">
+                        <div class="alert alert-warning" role="alert" style="margin-bottom: 20px;">
+                            <h4>
+                                <i class="fa fa-exclamation-triangle"/>
+ Student Currently Suspended</h4>
+                            <group>
+                                <group>
+                                    <field name="suspension_end_date" string="Suspended Until" readonly="1"/>
+                                    <field name="suspension_reason" string="Suspension Reason" readonly="1"/>
+                                </group>
+                            </group>
+                        </div>
+                    </div>
+
+                    <!-- Suspension Status Summary -->
+                    <group string="Suspension Summary">
+                        <group>
+                            <field name="is_suspended" string="Currently Suspended" widget="boolean_toggle" readonly="1"/>
+                            <field name="suspension_count" string="Total Suspensions" readonly="1"/>
+                        </group>
+                    </group>
+
+                </page>
+            </xpath>
+
+            <!-- Add hidden fields -->
+            <xpath expr="//field[@name='check_register']" position="after">
+                <field name="is_suspended" invisible="1"/>
+                <field name="suspension_count" invisible="1"/>
+                <field name="suspension_reason" invisible="1"/>
+                <field name="suspension_end_date" invisible="1"/>
+                <field name="suspension_status_display" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Server Actions for Quick Suspend -->
+    <record id="action_suspend_partners_server" model="ir.actions.server">
+        <field name="name">🚫 Suspend Partner</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">
+if len(records) == 1:
+    action = records.action_suspend_partner()
+else:
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Multiple Selection',
+            'message': 'Please select one partner at a time for suspension.',
+            'type': 'warning',
+        }
+    }
+        </field>
+    </record>
+
+    <record id="action_suspend_students_server" model="ir.actions.server">
+        <field name="name">🚫 Suspend Student</field>
+        <field name="model_id" ref="bi_sport_center_management.model_student_admission"/>
+        <field name="binding_model_id" ref="bi_sport_center_management.model_student_admission"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">
+if len(records) == 1:
+    action = records.action_suspend_student()
+else:
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Multiple Selection',
+            'message': 'Please select one student at a time for suspension.',
+            'type': 'warning',
+        }
+    }
+        </field>
+    </record>
+
+    <!-- Search view enhancements -->
+    <record id="view_res_partner_search_suspension" model="ir.ui.view">
+        <field name="name">res.partner.search.suspension</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='supplier']" position="after">
+                <separator/>
+                <filter string="Currently Suspended" name="suspended" domain="[('is_suspended', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Menu for Suspension Management -->
+    <record id="menu_partner_suspensions" model="ir.ui.menu">
+        <field name="name">Suspensions</field>
+        <field name="parent_id" ref="bi_sport_center_management.student_admission_main_menu"/>
+        <field name="sequence">100</field>
+    </record>
+
+    <record id="action_partner_suspensions" model="ir.actions.act_window">
+        <field name="name">All Suspensions</field>
+        <field name="res_model">partner.suspension</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                No suspensions found.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_all_suspensions" name="All Suspensions" parent="menu_partner_suspensions" action="action_partner_suspensions" sequence="10"/>
+
+    <record id="action_active_suspensions" model="ir.actions.act_window">
+        <field name="name">Active Suspensions</field>
+        <field name="res_model">partner.suspension</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'active'), ('is_current', '=', True)]</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <menuitem id="menu_active_suspensions" name="Active Suspensions" parent="menu_partner_suspensions" action="action_active_suspensions" sequence="20"/>
+</odoo>

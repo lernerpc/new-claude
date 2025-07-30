@@ -17,3 +17,5 @@ from . import student_schedule
 from . import student_sport_payment_report
 from . import sport_payment_dashboard
 from . import sport_selection_wizard
+from . import suspension_system
+

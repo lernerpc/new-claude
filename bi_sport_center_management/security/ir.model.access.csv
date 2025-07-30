@@ -19,3 +19,10 @@ access_student_sport_payment_report,access_student_sport_payment_report,model_st
 access_sport_payment_dashboard,access_sport_payment_dashboard,model_sport_payment_dashboard,base.group_user,1,0,0,0
 access_sport_payment_dashboard,sport.payment.dashboard,model_sport_payment_dashboard,base.group_user,1,1,1,1
 access_sport_selection_wizard,sport.selection.wizard,model_sport_selection_wizard,base.group_user,1,1,1,1
+
+
+
+
+access_partner_suspension_user,partner.suspension.user,model_partner_suspension,base.group_user,1,1,1,0
+access_partner_suspension_manager,partner.suspension.manager,model_partner_suspension,base.group_system,1,1,1,1
+access_partner_suspension_wizard,partner.suspension.wizard,model_partner_suspension_wizard,base.group_user,1,1,1,1

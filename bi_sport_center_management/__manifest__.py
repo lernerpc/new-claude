@@ -13,6 +13,7 @@
     'data': [
         'security/ir.model.access.csv',
         'data/admission_data.xml',
+        'data/suspension_data.xml',
         'demo/product_demo.xml',
         'data/admission_enroll_email.xml',
         'data/student_inquiry_mail.xml',
@@ -33,8 +34,9 @@
         'views/sport_scedule_views.xml',
         'views/schedule_selection.xml',
         'views/student_sport_payment_report_views.xml',
-'views/sport_payment_dashboard_views.xml',
-'views/sport_selection_wizard_views.xml',
+        'views/sport_payment_dashboard_views.xml',
+        'views/sport_selection_wizard_views.xml',
+        'views/suspension_views.xml',
     ],
     'assets': {
         'web.assets_frontend': [
